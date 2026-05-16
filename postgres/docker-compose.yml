@@ -1,7 +1,7 @@
 services:
-  postgres3:
+  biofood-postgres:
     image: postgres:15-alpine
-    container_name: postgres3
+    container_name: biofood-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: hackathondb
@@ -10,12 +10,18 @@ services:
     ports:
       - "5436:5432"
     volumes:
-      - postgres3_data:/var/lib/postgresql/data
+      - biofood_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U hackuser -d hackathondb"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - biofood
+
+networks:
+  biofood:
+    name: biofood-net
 
 volumes:
-  postgres3_data:
+  biofood_postgres_data:

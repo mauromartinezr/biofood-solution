@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
 export PORT="${PORT:-8080}"
-export DATABASE_DSN="${DATABASE_DSN:-host=postgres3 user=hackuser password=h4ckPass@549sSijfl_sD dbname=hackathondb port=5432 sslmode=disable TimeZone=UTC}"
+export DATABASE_DSN="${DATABASE_DSN:-host=biofood-postgres user=hackuser password=h4ckPass@549sSijfl_sD dbname=hackathondb port=5432 sslmode=disable TimeZone=UTC}"
 
 BIN="${BIN:-bin/biofood-server}"
 

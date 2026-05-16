@@ -1,37 +1,13 @@
 # Build desde la raíz del monorepo (necesita api/ + web/).
-# Ejecutar: docker compose -f api/docker-compose.yml up --build -d
-# O desde api/: docker compose up --build -d
+# PostgreSQL: make db-up (postgres/docker-compose.yml)
 
 services:
-  postgres3:
-    image: postgres:15-alpine
-    container_name: postgres3
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: hackathondb
-      POSTGRES_USER: hackuser
-      POSTGRES_PASSWORD: h4ckPass@549sSijfl_sD
-    ports:
-      - "5436:5432"
-    volumes:
-      - postgres3_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hackuser -d hackathondb"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - biofood
-
   biofood-backend:
     build:
       context: ..
       dockerfile: api/Dockerfile
     image: biofood-backend:latest
     container_name: biofood-backend
-    depends_on:
-      postgres3:
-        condition: service_healthy
     ports:
       - "3001:3001"
     env_file:
@@ -48,8 +24,18 @@ services:
     networks:
       - biofood
 
+  migrate:
+    profiles: [tools]
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+    env_file:
+      - .env.dev
+    command: ["./migrate"]
+    networks:
+      - biofood
+
 networks:
   biofood:
-
-volumes:
-  postgres3_data:
+    external: true
+    name: biofood-net
