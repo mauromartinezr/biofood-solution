@@ -1,4 +1,4 @@
-module biofood-solution
+module biofood-solution/api
 
 go 1.25.4
 
