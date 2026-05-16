@@ -9,14 +9,6 @@ import (
 	"gorm.io/gorm"
 )
 
-type productModel struct {
-	gorm.Model
-	Name        string  `gorm:"not null"`
-	Description string
-	Price       float64 `gorm:"not null"`
-	Stock       int
-}
-
 type ProductRepository struct {
 	db *gorm.DB
 }
@@ -39,9 +31,9 @@ func (r *ProductRepository) FindAll() ([]domain.Product, error) {
 	return out, nil
 }
 
-func (r *ProductRepository) FindByID(id uint) (domain.Product, error) {
+func (r *ProductRepository) FindByID(id string) (domain.Product, error) {
 	var m productModel
-	if err := r.db.First(&m, id).Error; err != nil {
+	if err := r.db.First(&m, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return domain.Product{}, apperrors.ErrNotFound
 		}
@@ -61,7 +53,6 @@ func (r *ProductRepository) Create(product *domain.Product) error {
 
 func (r *ProductRepository) Update(product *domain.Product) error {
 	m := fromDomain(*product)
-	m.ID = product.ID
 	if err := r.db.Save(&m).Error; err != nil {
 		return err
 	}
@@ -69,8 +60,8 @@ func (r *ProductRepository) Update(product *domain.Product) error {
 	return nil
 }
 
-func (r *ProductRepository) Delete(id uint) error {
-	res := r.db.Delete(&productModel{}, id)
+func (r *ProductRepository) Delete(id string) error {
+	res := r.db.Delete(&productModel{}, "id = ?", id)
 	if res.Error != nil {
 		return res.Error
 	}
@@ -82,26 +73,18 @@ func (r *ProductRepository) Delete(id uint) error {
 
 func toDomain(m productModel) domain.Product {
 	return domain.Product{
-		ID:          m.ID,
-		Name:        m.Name,
-		Description: m.Description,
-		Price:       m.Price,
-		Stock:       m.Stock,
-		CreatedAt:   m.CreatedAt,
-		UpdatedAt:   m.UpdatedAt,
+		ID:       m.ID,
+		Name:     m.Name,
+		Category: m.Category,
+		Price:    m.Price,
 	}
 }
 
 func fromDomain(p domain.Product) productModel {
 	return productModel{
-		Model: gorm.Model{
-			ID:        p.ID,
-			CreatedAt: p.CreatedAt,
-			UpdatedAt: p.UpdatedAt,
-		},
-		Name:        p.Name,
-		Description: p.Description,
-		Price:       p.Price,
-		Stock:       p.Stock,
+		ID:       p.ID,
+		Name:     p.Name,
+		Category: p.Category,
+		Price:    p.Price,
 	}
 }
