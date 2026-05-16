@@ -4,7 +4,15 @@ WEB_DIR := web
 API_DIR := api
 API_MAIN := ./cmd/server
 
-.PHONY: all build build-web build-api dev-web dev-api clean tidy docker-up docker-up-api
+# VPS: make deploy-vps VPS=user@host:/opt/biofood
+VPS ?=
+
+COMPOSE_FULL     := docker compose -f api/docker-compose.yml
+COMPOSE_API_DIR  := docker compose -f docker-compose.api-only.yml
+
+.PHONY: all build build-web build-api dev-web dev-api clean tidy help
+.PHONY: deploy deploy-api deploy-down deploy-logs deploy-restart
+.PHONY: deploy-vps deploy-vps-full
 
 ## Full production build: web assets → embedded into binary → bin/
 all: build
@@ -33,12 +41,42 @@ dev-web:
 	@echo "==> Starting Vite dev server..."
 	cd $(WEB_DIR) && npm install && npm run dev
 
-## Docker
-docker-up:
-	docker compose -f api/docker-compose.yml up --build -d
+## Docker deploy (local)
+deploy: ## Build y levanta API+web en Docker (puerto 3001)
+	$(COMPOSE_FULL) up --build -d
+	@echo "==> http://localhost:3001  |  health: http://localhost:3001/health"
 
-docker-up-api:
-	cd api && docker compose -f docker-compose.api-only.yml up --build -d
+deploy-api: ## Build y levanta solo API en Docker (sin web embebido)
+	cd $(API_DIR) && $(COMPOSE_API_DIR) up --build -d
+	@echo "==> http://localhost:3001  |  health: http://localhost:3001/health"
+
+deploy-down: ## Para y elimina contenedores Docker
+	-$(COMPOSE_FULL) down
+	-cd $(API_DIR) && $(COMPOSE_API_DIR) down
+
+deploy-logs: ## Sigue los logs del contenedor
+	$(COMPOSE_FULL) logs -f
+
+deploy-restart: deploy-down deploy ## Rebuild + reinicio
+
+## Docker deploy (VPS vía rsync + instrucciones)
+deploy-vps: ## Sube api/ al VPS. Uso: make deploy-vps VPS=user@host:/opt/biofood
+ifndef VPS
+	$(error Define VPS: make deploy-vps VPS=user@host:/opt/biofood)
+endif
+	./$(API_DIR)/deploy-vps.sh $(VPS)
+	@echo ""
+	@echo "En el VPS ejecuta:"
+	@echo "  cd $$(echo $(VPS) | cut -d: -f2)/api && docker compose -f docker-compose.api-only.yml up --build -d"
+
+deploy-vps-full: ## Sube api/ + web/ al VPS. Uso: make deploy-vps-full VPS=user@host:/opt/biofood
+ifndef VPS
+	$(error Define VPS: make deploy-vps-full VPS=user@host:/opt/biofood)
+endif
+	./$(API_DIR)/deploy-vps.sh $(VPS) --full
+	@echo ""
+	@echo "En el VPS ejecuta:"
+	@echo "  cd $$(echo $(VPS) | cut -d: -f2) && docker compose -f api/docker-compose.yml up --build -d"
 
 ## Utilities
 tidy:
@@ -47,3 +85,6 @@ tidy:
 
 clean:
 	rm -rf $(BIN_DIR) $(API_DIR)/$(API_MAIN)/dist $(WEB_DIR)/dist
+
+help: ## Muestra esta ayuda
+	@grep -E '^[a-zA-Z0-9_-]+:.*##' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
