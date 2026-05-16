@@ -16,7 +16,7 @@ WAIT_POSTGRES = until docker exec biofood-postgres pg_isready -U hackuser -d hac
 .PHONY: all build build-web build-api dev-web dev-api clean tidy help
 .PHONY: deploy deploy-api deploy-down deploy-logs deploy-restart
 .PHONY: deploy-vps deploy-vps-full
-.PHONY: db-up db-down db-logs db-psql db-seed migrate migrate-docker
+.PHONY: db-up db-down db-logs db-psql
 
 ## Full production build: web assets → embedded into binary → bin/
 all: build
@@ -37,7 +37,7 @@ build-api: build-web
 	@echo "==> Binary ready: $(BIN_DIR)/$(APP)"
 
 ## Development: run API and web independently
-dev-api: db-up ## API en dev con PostgreSQL (sin migraciones automáticas)
+dev-api: db-up ## API en dev con PostgreSQL (AutoMigrate al iniciar)
 	@echo "==> Esperando PostgreSQL..."
 	@$(WAIT_POSTGRES)
 	@echo "==> Starting API..."
@@ -60,35 +60,18 @@ db-logs: ## Logs de PostgreSQL
 db-psql: ## Shell psql en el contenedor
 	docker exec -it biofood-postgres psql -U hackuser -d hackathondb
 
-db-seed: db-up ## Carga datos de prueba BioAlert (postgres/seed.sql)
-	@echo "==> Esperando PostgreSQL..."
-	@$(WAIT_POSTGRES)
-	@echo "==> Ejecutando seed..."
-	docker exec -i biofood-postgres psql -U hackuser -d hackathondb < postgres/seed.sql
-	@echo "==> Seed completado."
-
-migrate: db-up ## Ejecuta migraciones (Go local → localhost:5436)
-	@echo "==> Esperando PostgreSQL..."
-	@$(WAIT_POSTGRES)
-	cd $(API_DIR) && set -a && . ./.env.local && set +a && go run ./cmd/migrate
-
-migrate-docker: db-up ## Ejecuta migraciones en Docker (VPS / sin Go)
-	@echo "==> Esperando PostgreSQL..."
-	@$(WAIT_POSTGRES)
-	cd $(API_DIR) && docker compose -f docker-compose.api-only.yml --profile tools run --rm migrate
-
 ## Docker deploy (local)
-deploy: ## Build y levanta API+web en Docker (requiere db-up + migrate-docker antes)
+deploy: ## Build y levanta API+web en Docker (AutoMigrate al iniciar)
 	@docker network inspect biofood-net >/dev/null 2>&1 && \
 		docker exec biofood-postgres pg_isready -U hackuser -d hackathondb >/dev/null 2>&1 || \
-		(echo "Error: ejecuta primero: make db-up && make migrate-docker" && exit 1)
+		(echo "Error: ejecuta primero: make db-up" && exit 1)
 	$(COMPOSE_FULL) up --build -d
 	@echo "==> http://localhost:3001  |  health: http://localhost:3001/health"
 
-deploy-api: ## Solo API en Docker (requiere db-up + migrate-docker antes)
+deploy-api: ## Solo API en Docker (AutoMigrate al iniciar)
 	@docker network inspect biofood-net >/dev/null 2>&1 && \
 		docker exec biofood-postgres pg_isready -U hackuser -d hackathondb >/dev/null 2>&1 || \
-		(echo "Error: ejecuta primero: make db-up && make migrate-docker" && exit 1)
+		(echo "Error: ejecuta primero: make db-up" && exit 1)
 	$(COMPOSE_API) up --build -d
 	@echo "==> http://localhost:3001  |  health: http://localhost:3001/health"
 
@@ -110,7 +93,7 @@ endif
 	./$(API_DIR)/deploy-vps.sh $(VPS)
 	@echo ""
 	@echo "En el VPS ejecuta:"
-	@echo "  cd $$(echo $(VPS) | cut -d: -f2) && make db-up && make migrate-docker && make deploy-api"
+	@echo "  cd $$(echo $(VPS) | cut -d: -f2) && make db-up && make deploy-api"
 
 deploy-vps-full: ## Sube api/ + web/ al VPS. Uso: make deploy-vps-full VPS=user@host:/opt/biofood
 ifndef VPS
@@ -119,7 +102,7 @@ endif
 	./$(API_DIR)/deploy-vps.sh $(VPS) --full
 	@echo ""
 	@echo "En el VPS ejecuta:"
-	@echo "  cd $$(echo $(VPS) | cut -d: -f2) && make db-up && make migrate-docker && make deploy"
+	@echo "  cd $$(echo $(VPS) | cut -d: -f2) && make db-up && make deploy"
 
 ## Utilities
 tidy:
