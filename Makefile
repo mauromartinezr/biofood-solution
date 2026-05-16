@@ -9,10 +9,12 @@ VPS ?=
 
 COMPOSE_FULL     := docker compose -f api/docker-compose.yml
 COMPOSE_API_DIR  := docker compose -f docker-compose.api-only.yml
+COMPOSE_DB       := docker compose -f postgres/docker-compose.yml
 
-.PHONY: all build build-web build-api dev-web dev-api clean tidy help
+.PHONY: all build build-web build-api dev-web dev-api dev-api-postgres clean tidy help
 .PHONY: deploy deploy-api deploy-down deploy-logs deploy-restart
 .PHONY: deploy-vps deploy-vps-full
+.PHONY: db-up db-down db-logs db-psql
 
 ## Full production build: web assets → embedded into binary → bin/
 all: build
@@ -40,6 +42,25 @@ dev-api:
 dev-web:
 	@echo "==> Starting Vite dev server..."
 	cd $(WEB_DIR) && npm install && npm run dev
+
+dev-api-postgres: db-up ## API en dev contra PostgreSQL (puerto 5436)
+	@echo "==> Esperando PostgreSQL..."
+	@until docker exec postgres3 pg_isready -U hackuser -d hackathondb >/dev/null 2>&1; do sleep 1; done
+	@echo "==> Starting API con .env.postgres..."
+	cd $(API_DIR) && set -a && . ./.env.postgres && set +a && go run $(API_MAIN)
+
+db-up: ## Levanta PostgreSQL local (localhost:5436)
+	$(COMPOSE_DB) up -d
+	@echo "==> PostgreSQL: localhost:5436  db=hackathondb  user=hackuser"
+
+db-down: ## Para y elimina el contenedor PostgreSQL
+	$(COMPOSE_DB) down
+
+db-logs: ## Logs de PostgreSQL
+	$(COMPOSE_DB) logs -f
+
+db-psql: ## Shell psql en el contenedor
+	docker exec -it postgres3 psql -U hackuser -d hackathondb
 
 ## Docker deploy (local)
 deploy: ## Build y levanta API+web en Docker (puerto 3001)

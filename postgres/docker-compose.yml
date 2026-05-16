@@ -1,0 +1,21 @@
+services:
+  postgres3:
+    image: postgres:15-alpine
+    container_name: postgres3
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hackathondb
+      POSTGRES_USER: hackuser
+      POSTGRES_PASSWORD: h4ckPass@549sSijfl_sD
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres3_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hackuser -d hackathondb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres3_data:
