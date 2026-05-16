@@ -72,13 +72,15 @@ migrate-docker: db-up ## Ejecuta migraciones en Docker (VPS / sin Go)
 
 ## Docker deploy (local)
 deploy: ## Build y levanta API+web en Docker (requiere db-up + migrate-docker antes)
-	@test "$$(docker network inspect biofood-net >/dev/null 2>&1 && docker exec biofood-postgres pg_isready -U hackuser -d hackathondb >/dev/null 2>&1)" || \
+	@docker network inspect biofood-net >/dev/null 2>&1 && \
+		docker exec biofood-postgres pg_isready -U hackuser -d hackathondb >/dev/null 2>&1 || \
 		(echo "Error: ejecuta primero: make db-up && make migrate-docker" && exit 1)
 	$(COMPOSE_FULL) up --build -d
 	@echo "==> http://localhost:3001  |  health: http://localhost:3001/health"
 
 deploy-api: ## Solo API en Docker (requiere db-up + migrate-docker antes)
-	@test "$$(docker network inspect biofood-net >/dev/null 2>&1 && docker exec biofood-postgres pg_isready -U hackuser -d hackathondb >/dev/null 2>&1)" || \
+	@docker network inspect biofood-net >/dev/null 2>&1 && \
+		docker exec biofood-postgres pg_isready -U hackuser -d hackathondb >/dev/null 2>&1 || \
 		(echo "Error: ejecuta primero: make db-up && make migrate-docker" && exit 1)
 	$(COMPOSE_API) up --build -d
 	@echo "==> http://localhost:3001  |  health: http://localhost:3001/health"
