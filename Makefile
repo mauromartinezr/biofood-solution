@@ -7,11 +7,11 @@ API_MAIN := ./cmd/server
 # VPS: make deploy-vps VPS=user@host:/opt/biofood
 VPS ?=
 
-COMPOSE_FULL     := docker compose -f api/docker-compose.yml
-COMPOSE_API_DIR  := docker compose -f docker-compose.api-only.yml
-COMPOSE_DB       := docker compose -f postgres/docker-compose.yml
+COMPOSE_FULL := docker compose -f api/docker-compose.yml
+COMPOSE_API  := docker compose -f api/docker-compose.api-only.yml
+COMPOSE_DB   := docker compose -f postgres/docker-compose.yml
 
-.PHONY: all build build-web build-api dev-web dev-api dev-api-postgres clean tidy help
+.PHONY: all build build-web build-api dev-web dev-api clean tidy help
 .PHONY: deploy deploy-api deploy-down deploy-logs deploy-restart
 .PHONY: deploy-vps deploy-vps-full
 .PHONY: db-up db-down db-logs db-psql
@@ -35,19 +35,15 @@ build-api: build-web
 	@echo "==> Binary ready: $(BIN_DIR)/$(APP)"
 
 ## Development: run API and web independently
-dev-api:
-	@echo "==> Starting API (dev mode, no embedded assets)..."
-	cd $(API_DIR) && go run $(API_MAIN)
+dev-api: db-up ## API en dev con PostgreSQL (localhost:5436)
+	@echo "==> Esperando PostgreSQL..."
+	@until docker exec postgres3 pg_isready -U hackuser -d hackathondb >/dev/null 2>&1; do sleep 1; done
+	@echo "==> Starting API..."
+	cd $(API_DIR) && set -a && . ./.env.local && set +a && go run $(API_MAIN)
 
 dev-web:
 	@echo "==> Starting Vite dev server..."
 	cd $(WEB_DIR) && npm install && npm run dev
-
-dev-api-postgres: db-up ## API en dev contra PostgreSQL (puerto 5436)
-	@echo "==> Esperando PostgreSQL..."
-	@until docker exec postgres3 pg_isready -U hackuser -d hackathondb >/dev/null 2>&1; do sleep 1; done
-	@echo "==> Starting API con .env.postgres..."
-	cd $(API_DIR) && set -a && . ./.env.postgres && set +a && go run $(API_MAIN)
 
 db-up: ## Levanta PostgreSQL local (localhost:5436)
 	$(COMPOSE_DB) up -d
@@ -63,17 +59,20 @@ db-psql: ## Shell psql en el contenedor
 	docker exec -it postgres3 psql -U hackuser -d hackathondb
 
 ## Docker deploy (local)
-deploy: ## Build y levanta API+web en Docker (puerto 3001)
+deploy: ## Build y levanta API+web+PostgreSQL en Docker (puerto 3001)
 	$(COMPOSE_FULL) up --build -d
 	@echo "==> http://localhost:3001  |  health: http://localhost:3001/health"
+	@echo "==> PostgreSQL: localhost:5436"
 
-deploy-api: ## Build y levanta solo API en Docker (sin web embebido)
-	cd $(API_DIR) && $(COMPOSE_API_DIR) up --build -d
+deploy-api: ## Build y levanta API + PostgreSQL en Docker (puerto 3001)
+	$(COMPOSE_API) up --build -d
 	@echo "==> http://localhost:3001  |  health: http://localhost:3001/health"
+	@echo "==> PostgreSQL: localhost:5436"
 
 deploy-down: ## Para y elimina contenedores Docker
 	-$(COMPOSE_FULL) down
-	-cd $(API_DIR) && $(COMPOSE_API_DIR) down
+	-$(COMPOSE_API) down
+	-$(COMPOSE_DB) down
 
 deploy-logs: ## Sigue los logs del contenedor
 	$(COMPOSE_FULL) logs -f

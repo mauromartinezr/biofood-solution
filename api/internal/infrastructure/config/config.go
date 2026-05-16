@@ -16,7 +16,7 @@ func Load() Config {
 	}
 	dsn := os.Getenv("DATABASE_DSN")
 	if dsn == "" {
-		dsn = "biofood.db"
+		dsn = "host=localhost user=hackuser password=h4ckPass@549sSijfl_sD dbname=hackathondb port=5436 sslmode=disable TimeZone=UTC"
 	}
 	return Config{
 		Port: port,

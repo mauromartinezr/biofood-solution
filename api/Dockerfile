@@ -19,7 +19,7 @@ RUN npm run build
 # --- Stage 2: Go (módulo en api/) ---
 FROM golang:1.25-alpine AS builder
 
-RUN apk add --no-cache git ca-certificates gcc musl-dev
+RUN apk add --no-cache git ca-certificates
 
 WORKDIR /src
 
@@ -29,7 +29,7 @@ RUN go mod download
 COPY api/ ./
 COPY --from=web /web/dist ./cmd/server/dist
 
-ENV CGO_ENABLED=1
+ENV CGO_ENABLED=0
 RUN go build -tags prod -ldflags="-w -s" -o /out/main ./cmd/server
 
 # --- Stage 3: runtime ---
@@ -44,13 +44,12 @@ WORKDIR /app
 COPY --from=builder /out/main .
 COPY api/.env.dev .env.dev
 
-RUN mkdir -p /app/data && chown -R appuser:appuser /app
+RUN chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 3001
 
 ENV PORT=3001
-ENV DATABASE_DSN=/app/data/biofood.db
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1

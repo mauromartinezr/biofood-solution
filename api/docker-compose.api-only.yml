@@ -2,33 +2,53 @@
 # En el VPS: cd api && docker compose -f docker-compose.api-only.yml up --build -d
 
 services:
+  postgres3:
+    image: postgres:15-alpine
+    container_name: postgres3
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hackathondb
+      POSTGRES_USER: hackuser
+      POSTGRES_PASSWORD: h4ckPass@549sSijfl_sD
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres3_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hackuser -d hackathondb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - biofood
+
   biofood-backend:
     build:
       context: .
       dockerfile: Dockerfile.api-only
     image: biofood-backend:latest
     container_name: biofood-backend
-
+    depends_on:
+      postgres3:
+        condition: service_healthy
     ports:
       - "3001:3001"
-
     env_file:
       - .env.dev
     environment:
       - PORT=3001
-      - DATABASE_DSN=/app/data/biofood.db
-
-    volumes:
-      - biofood-data:/app/data
-
     restart: unless-stopped
-
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - biofood
+
+networks:
+  biofood:
 
 volumes:
-  biofood-data:
+  postgres3_data:

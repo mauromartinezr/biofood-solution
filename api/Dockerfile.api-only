@@ -5,7 +5,7 @@
 
 FROM golang:1.25-alpine AS builder
 
-RUN apk add --no-cache git ca-certificates gcc musl-dev
+RUN apk add --no-cache git ca-certificates
 
 WORKDIR /src
 
@@ -15,7 +15,7 @@ RUN go mod download
 COPY . .
 
 # Sin -tags prod: no requiere cmd/server/dist (frontend va aparte o con make deploy).
-ENV CGO_ENABLED=1
+ENV CGO_ENABLED=0
 RUN go build -ldflags="-w -s" -o /out/main ./cmd/server
 
 FROM alpine:latest
@@ -29,13 +29,12 @@ WORKDIR /app
 COPY --from=builder /out/main .
 COPY .env.dev .env.dev
 
-RUN mkdir -p /app/data && chown -R appuser:appuser /app
+RUN chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 3001
 
 ENV PORT=3001
-ENV DATABASE_DSN=/app/data/biofood.db
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
