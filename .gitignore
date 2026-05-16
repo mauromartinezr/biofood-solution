@@ -11,3 +11,6 @@ api/cmd/server/dist/
 
 # OS
 .DS_Store
+
+.env.local
+.env.dev
