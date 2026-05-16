@@ -1,6 +1,7 @@
 package http
 
 import (
+	"log"
 	"net/http"
 	"strings"
 
@@ -59,7 +60,9 @@ func (h *Handler) Webhook(c echo.Context) error {
 		return response.Error(c, apperrors.ErrInvalidInput)
 	}
 
-	_ = h.svc.HandleIncoming(domain.IncomingMessage{From: from, Text: text})
+	if err := h.svc.HandleIncoming(domain.IncomingMessage{From: from, Text: text}); err != nil {
+		log.Printf("[whatsapp] HandleIncoming error from=%s: %v", from, err)
+	}
 
 	return c.JSON(http.StatusOK, echo.Map{"status": "ok"})
 }
