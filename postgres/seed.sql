@@ -1,0 +1,442 @@
+-- ================================================================
+-- BioAlert – Seed de Base de Datos de Pruebas
+-- ================================================================
+-- Referencia temporal: CURRENT_DATE (ejecutar tal cual en PostgreSQL)
+-- school_id piloto: a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+--
+-- Cobertura de pilares:
+--   [A] Alcance e identidad
+--   [B] Historial 30 días  → promedio móvil / proyección de saldo
+--   [C] Comportamiento HOY → C1 consumió | C2 ausente (Cron 12:00 PM)
+--   [D] Alérgenos          → alerta inmediata por coincidencia
+--   [E] Inventario         → alerta stock crítico (Cron 7:00 AM)
+-- ================================================================
+
+BEGIN;
+
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- ================================================================
+-- ESQUEMA
+-- ================================================================
+
+CREATE TABLE IF NOT EXISTS students (
+    id        UUID         PRIMARY KEY,
+    name      VARCHAR(100) NOT NULL,
+    grade     VARCHAR(20),
+    school_id UUID         NOT NULL,
+    balance   NUMERIC(12,2) NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS products (
+    id       UUID          PRIMARY KEY,
+    name     VARCHAR(100)  NOT NULL,
+    category VARCHAR(50),
+    price    NUMERIC(10,2) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS transactions (
+    id         UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id UUID          NOT NULL REFERENCES students(id),
+    product_id UUID          NOT NULL REFERENCES products(id),
+    amount     NUMERIC(10,2) NOT NULL,
+    created_at TIMESTAMP     NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS student_allergens (
+    student_id    UUID        NOT NULL REFERENCES students(id),
+    allergen_name VARCHAR(50) NOT NULL,
+    PRIMARY KEY (student_id, allergen_name)
+);
+
+CREATE TABLE IF NOT EXISTS product_allergens (
+    product_id    UUID        NOT NULL REFERENCES products(id),
+    allergen_name VARCHAR(50) NOT NULL,
+    PRIMARY KEY (product_id, allergen_name)
+);
+
+CREATE TABLE IF NOT EXISTS parent_phone_map (
+    phone_e164 VARCHAR(20) NOT NULL PRIMARY KEY,
+    student_id UUID        NOT NULL REFERENCES students(id)
+);
+
+CREATE TABLE IF NOT EXISTS cafeteria_admins (
+    phone_e164 VARCHAR(20) NOT NULL,
+    school_id  UUID        NOT NULL,
+    PRIMARY KEY (phone_e164, school_id)
+);
+
+CREATE TABLE IF NOT EXISTS inventory (
+    product_id    UUID NOT NULL REFERENCES products(id),
+    school_id     UUID NOT NULL,
+    current_stock INT  NOT NULL DEFAULT 0,
+    minimum_stock INT  NOT NULL DEFAULT 0,
+    PRIMARY KEY (product_id, school_id)
+);
+
+-- ================================================================
+-- LIMPIEZA (respeta orden de FKs con CASCADE)
+-- ================================================================
+TRUNCATE TABLE
+    inventory, product_allergens, student_allergens,
+    transactions, parent_phone_map, cafeteria_admins,
+    students, products
+RESTART IDENTITY CASCADE;
+
+-- ================================================================
+-- [A] ALCANCE E IDENTIDAD
+-- 1 escuela piloto · 1 admin · 10 estudiantes · 10 padres
+-- ================================================================
+
+INSERT INTO cafeteria_admins (phone_e164, school_id) VALUES
+('+573001234567', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11');
+
+-- Balances reflejan saldo tras ~30 días de consumo histórico insertado abajo
+INSERT INTO students (id, name, grade, school_id, balance) VALUES
+-- [C1] Consumen HOY
+('b100-0000-0000-0000-000000000001', 'Juan García',       '5A', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',  45200.00),  -- [D] alérgico mani
+('b100-0000-0000-0000-000000000002', 'María López',       '5A', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',  62500.00),
+('b100-0000-0000-0000-000000000003', 'Carlos Rodríguez',  '5B', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',  31000.00),  -- [D] alérgico leche
+-- [C2] NO consumen HOY → Cron 12:00 PM
+('b100-0000-0000-0000-000000000004', 'Ana Martínez',      '5B', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',  58300.00),  -- [D] alérgica gluten
+('b100-0000-0000-0000-000000000005', 'Pedro González',    '6A', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',  75000.00),
+('b100-0000-0000-0000-000000000006', 'Lucía Hernández',   '6A', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',  23100.00),
+-- Solo historial (sin transacciones hoy)
+('b100-0000-0000-0000-000000000007', 'Diego Torres',      '6B', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',  89500.00),
+('b100-0000-0000-0000-000000000008', 'Valentina Flores',  '6B', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',  14800.00),
+('b100-0000-0000-0000-000000000009', 'Sebastián Ramírez', '7A', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 102000.00),
+('b100-0000-0000-0000-000000000010', 'Isabella Castro',   '7A', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',  38400.00);
+
+-- 10 padres mapeados 1:1 (E.164)
+INSERT INTO parent_phone_map (phone_e164, student_id) VALUES
+('+573111000001', 'b100-0000-0000-0000-000000000001'),
+('+573111000002', 'b100-0000-0000-0000-000000000002'),
+('+573111000003', 'b100-0000-0000-0000-000000000003'),
+('+573111000004', 'b100-0000-0000-0000-000000000004'),
+('+573111000005', 'b100-0000-0000-0000-000000000005'),
+('+573111000006', 'b100-0000-0000-0000-000000000006'),
+('+573111000007', 'b100-0000-0000-0000-000000000007'),
+('+573111000008', 'b100-0000-0000-0000-000000000008'),
+('+573111000009', 'b100-0000-0000-0000-000000000009'),
+('+573111000010', 'b100-0000-0000-0000-000000000010');
+
+-- ================================================================
+-- [E] PRODUCTOS
+-- p01–p05 tienen alérgenos | p06–p08 sin alérgenos
+-- ================================================================
+
+INSERT INTO products (id, name, category, price) VALUES
+('c100-0000-0000-0000-000000000001', 'Maní tostado',         'Snack',     2500.00),  -- allergen: mani
+('c100-0000-0000-0000-000000000002', 'Leche con chocolate',  'Bebida',    3000.00),  -- allergen: leche
+('c100-0000-0000-0000-000000000003', 'Pan integral',         'Panadería', 2000.00),  -- allergen: gluten
+('c100-0000-0000-0000-000000000004', 'Arepa con queso',      'Desayuno',  4000.00),  -- allergen: leche
+('c100-0000-0000-0000-000000000005', 'Galletas de maní',     'Snack',     1500.00),  -- allergen: mani + gluten
+('c100-0000-0000-0000-000000000006', 'Jugo natural naranja', 'Bebida',    3500.00),
+('c100-0000-0000-0000-000000000007', 'Arroz con pollo',      'Almuerzo',  8000.00),
+('c100-0000-0000-0000-000000000008', 'Empanada de pipián',   'Snack',     2500.00);  -- allergen: gluten
+
+-- ================================================================
+-- [D] ALÉRGENOS DE PRODUCTOS (7 registros — requisito mínimo: 5)
+-- ================================================================
+
+INSERT INTO product_allergens (product_id, allergen_name) VALUES
+('c100-0000-0000-0000-000000000001', 'mani'),
+('c100-0000-0000-0000-000000000002', 'leche'),
+('c100-0000-0000-0000-000000000003', 'gluten'),
+('c100-0000-0000-0000-000000000004', 'leche'),
+('c100-0000-0000-0000-000000000005', 'mani'),
+('c100-0000-0000-0000-000000000005', 'gluten'),
+('c100-0000-0000-0000-000000000008', 'gluten');
+
+-- ================================================================
+-- [D] ALÉRGENOS DE ESTUDIANTES (3 estudiantes)
+-- s01 → mani  (comprará Maní tostado HOY  → ALERTA INMEDIATA)
+-- s03 → leche (comprará Leche con choc HOY → ALERTA INMEDIATA)
+-- s04 → gluten (no consume hoy; solo dispara alerta de ausencia)
+-- ================================================================
+
+INSERT INTO student_allergens (student_id, allergen_name) VALUES
+('b100-0000-0000-0000-000000000001', 'mani'),
+('b100-0000-0000-0000-000000000003', 'leche'),
+('b100-0000-0000-0000-000000000004', 'gluten');
+
+-- ================================================================
+-- [E] INVENTARIO — todos los productos → escuela piloto
+-- ⚠ Stock crítico: p01, p03, p07 (current_stock <= minimum_stock)
+-- ================================================================
+
+INSERT INTO inventory (product_id, school_id, current_stock, minimum_stock) VALUES
+('c100-0000-0000-0000-000000000001', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',  5, 10),  -- ⚠ Maní tostado
+('c100-0000-0000-0000-000000000002', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 45, 10),
+('c100-0000-0000-0000-000000000003', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',  8, 15),  -- ⚠ Pan integral
+('c100-0000-0000-0000-000000000004', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 30, 10),
+('c100-0000-0000-0000-000000000005', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 60, 20),
+('c100-0000-0000-0000-000000000006', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 40, 15),
+('c100-0000-0000-0000-000000000007', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',  3,  5),  -- ⚠ Arroz con pollo
+('c100-0000-0000-0000-000000000008', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 25, 10);
+
+-- ================================================================
+-- [B] HISTORIAL DE TRANSACCIONES – ÚLTIMOS 30 DÍAS
+-- Convención horaria escolar:
+--   07:30–08:30 = desayuno/jugo mañana
+--   10:00–11:00 = refrigerio media mañana
+--   12:00–13:00 = almuerzo
+-- ================================================================
+
+INSERT INTO transactions (student_id, product_id, amount, created_at) VALUES
+
+-- ----------------------------------------------------------------
+-- s01 · Juan García | desayuno + almuerzo frecuente (14 000–12 000 COP/día activo)
+-- ----------------------------------------------------------------
+('b100-0000-0000-0000-000000000001','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL '29 days') + TIME '07:30:00'),
+('b100-0000-0000-0000-000000000001','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '29 days') + TIME '12:15:00'),
+('b100-0000-0000-0000-000000000001','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '27 days') + TIME '07:45:00'),
+('b100-0000-0000-0000-000000000001','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '27 days') + TIME '12:10:00'),
+('b100-0000-0000-0000-000000000001','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL '25 days') + TIME '07:55:00'),
+('b100-0000-0000-0000-000000000001','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '22 days') + TIME '07:40:00'),
+('b100-0000-0000-0000-000000000001','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '22 days') + TIME '12:20:00'),
+('b100-0000-0000-0000-000000000001','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL '20 days') + TIME '07:35:00'),
+('b100-0000-0000-0000-000000000001','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '18 days') + TIME '12:05:00'),
+('b100-0000-0000-0000-000000000001','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL '15 days') + TIME '07:50:00'),
+('b100-0000-0000-0000-000000000001','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '13 days') + TIME '08:00:00'),
+('b100-0000-0000-0000-000000000001','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '11 days') + TIME '12:30:00'),
+('b100-0000-0000-0000-000000000001','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL  '8 days') + TIME '07:45:00'),
+('b100-0000-0000-0000-000000000001','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL  '6 days') + TIME '12:10:00'),
+('b100-0000-0000-0000-000000000001','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL  '4 days') + TIME '07:55:00'),
+('b100-0000-0000-0000-000000000001','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL  '2 days') + TIME '12:15:00'),
+('b100-0000-0000-0000-000000000001','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL  '1 day')  + TIME '07:40:00'),
+
+-- ----------------------------------------------------------------
+-- s02 · María López | snacks frecuentes + almuerzo esporádico (~5 500 COP/día activo)
+-- ----------------------------------------------------------------
+('b100-0000-0000-0000-000000000002','c100-0000-0000-0000-000000000008', 2500.00, (CURRENT_DATE - INTERVAL '28 days') + TIME '10:30:00'),
+('b100-0000-0000-0000-000000000002','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '26 days') + TIME '07:50:00'),
+('b100-0000-0000-0000-000000000002','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '24 days') + TIME '12:00:00'),
+('b100-0000-0000-0000-000000000002','c100-0000-0000-0000-000000000008', 2500.00, (CURRENT_DATE - INTERVAL '21 days') + TIME '10:45:00'),
+('b100-0000-0000-0000-000000000002','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '19 days') + TIME '07:35:00'),
+('b100-0000-0000-0000-000000000002','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '17 days') + TIME '12:25:00'),
+('b100-0000-0000-0000-000000000002','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL '14 days') + TIME '07:55:00'),
+('b100-0000-0000-0000-000000000002','c100-0000-0000-0000-000000000008', 2500.00, (CURRENT_DATE - INTERVAL '12 days') + TIME '10:30:00'),
+('b100-0000-0000-0000-000000000002','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '10 days') + TIME '07:45:00'),
+('b100-0000-0000-0000-000000000002','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL  '7 days') + TIME '12:15:00'),
+('b100-0000-0000-0000-000000000002','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL  '5 days') + TIME '08:00:00'),
+('b100-0000-0000-0000-000000000002','c100-0000-0000-0000-000000000008', 2500.00, (CURRENT_DATE - INTERVAL  '3 days') + TIME '10:20:00'),
+('b100-0000-0000-0000-000000000002','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL  '1 day')  + TIME '07:50:00'),
+
+-- ----------------------------------------------------------------
+-- s03 · Carlos Rodríguez | almuerzo diario constante (~11 500 COP/día activo)
+-- ----------------------------------------------------------------
+('b100-0000-0000-0000-000000000003','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '30 days') + TIME '12:00:00'),
+('b100-0000-0000-0000-000000000003','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '28 days') + TIME '08:10:00'),
+('b100-0000-0000-0000-000000000003','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '26 days') + TIME '12:05:00'),
+('b100-0000-0000-0000-000000000003','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL '24 days') + TIME '07:40:00'),
+('b100-0000-0000-0000-000000000003','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '22 days') + TIME '12:15:00'),
+('b100-0000-0000-0000-000000000003','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '20 days') + TIME '07:55:00'),
+('b100-0000-0000-0000-000000000003','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '18 days') + TIME '12:30:00'),
+('b100-0000-0000-0000-000000000003','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL '16 days') + TIME '07:50:00'),
+('b100-0000-0000-0000-000000000003','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '14 days') + TIME '12:10:00'),
+('b100-0000-0000-0000-000000000003','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '12 days') + TIME '08:05:00'),
+('b100-0000-0000-0000-000000000003','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '10 days') + TIME '12:20:00'),
+('b100-0000-0000-0000-000000000003','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL  '8 days') + TIME '07:35:00'),
+('b100-0000-0000-0000-000000000003','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL  '5 days') + TIME '12:00:00'),
+('b100-0000-0000-0000-000000000003','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL  '3 days') + TIME '07:45:00'),
+('b100-0000-0000-0000-000000000003','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL  '1 day')  + TIME '12:10:00'),
+
+-- ----------------------------------------------------------------
+-- s04 · Ana Martínez | variado — SIN transacciones HOY [C2]
+-- ----------------------------------------------------------------
+('b100-0000-0000-0000-000000000004','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL '29 days') + TIME '07:30:00'),
+('b100-0000-0000-0000-000000000004','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '27 days') + TIME '07:45:00'),
+('b100-0000-0000-0000-000000000004','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '25 days') + TIME '12:15:00'),
+('b100-0000-0000-0000-000000000004','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL '23 days') + TIME '07:55:00'),
+('b100-0000-0000-0000-000000000004','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '21 days') + TIME '08:00:00'),
+('b100-0000-0000-0000-000000000004','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '18 days') + TIME '12:30:00'),
+('b100-0000-0000-0000-000000000004','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL '15 days') + TIME '07:40:00'),
+('b100-0000-0000-0000-000000000004','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '12 days') + TIME '07:50:00'),
+('b100-0000-0000-0000-000000000004','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL  '9 days') + TIME '12:05:00'),
+('b100-0000-0000-0000-000000000004','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL  '6 days') + TIME '07:35:00'),
+('b100-0000-0000-0000-000000000004','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL  '3 days') + TIME '07:55:00'),
+('b100-0000-0000-0000-000000000004','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL  '1 day')  + TIME '12:20:00'),
+
+-- ----------------------------------------------------------------
+-- s05 · Pedro González | almuerzo regular — SIN transacciones HOY [C2]
+-- ----------------------------------------------------------------
+('b100-0000-0000-0000-000000000005','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '30 days') + TIME '12:10:00'),
+('b100-0000-0000-0000-000000000005','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '28 days') + TIME '07:50:00'),
+('b100-0000-0000-0000-000000000005','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '25 days') + TIME '12:00:00'),
+('b100-0000-0000-0000-000000000005','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL '22 days') + TIME '07:40:00'),
+('b100-0000-0000-0000-000000000005','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '19 days') + TIME '12:30:00'),
+('b100-0000-0000-0000-000000000005','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '16 days') + TIME '08:00:00'),
+('b100-0000-0000-0000-000000000005','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '13 days') + TIME '12:15:00'),
+('b100-0000-0000-0000-000000000005','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL '10 days') + TIME '07:35:00'),
+('b100-0000-0000-0000-000000000005','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL  '7 days') + TIME '12:05:00'),
+('b100-0000-0000-0000-000000000005','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL  '4 days') + TIME '07:55:00'),
+('b100-0000-0000-0000-000000000005','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL  '2 days') + TIME '12:20:00'),
+('b100-0000-0000-0000-000000000005','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL  '1 day')  + TIME '07:45:00'),
+
+-- ----------------------------------------------------------------
+-- s06 · Lucía Hernández | snack + almuerzo, bajo gasto — SIN HOY [C2]
+-- ----------------------------------------------------------------
+('b100-0000-0000-0000-000000000006','c100-0000-0000-0000-000000000008', 2500.00, (CURRENT_DATE - INTERVAL '28 days') + TIME '10:20:00'),
+('b100-0000-0000-0000-000000000006','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '26 days') + TIME '12:00:00'),
+('b100-0000-0000-0000-000000000006','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '24 days') + TIME '07:50:00'),
+('b100-0000-0000-0000-000000000006','c100-0000-0000-0000-000000000008', 2500.00, (CURRENT_DATE - INTERVAL '21 days') + TIME '10:35:00'),
+('b100-0000-0000-0000-000000000006','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '18 days') + TIME '12:10:00'),
+('b100-0000-0000-0000-000000000006','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '15 days') + TIME '07:40:00'),
+('b100-0000-0000-0000-000000000006','c100-0000-0000-0000-000000000008', 2500.00, (CURRENT_DATE - INTERVAL '12 days') + TIME '10:45:00'),
+('b100-0000-0000-0000-000000000006','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL  '9 days') + TIME '12:25:00'),
+('b100-0000-0000-0000-000000000006','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL  '6 days') + TIME '07:55:00'),
+('b100-0000-0000-0000-000000000006','c100-0000-0000-0000-000000000008', 2500.00, (CURRENT_DATE - INTERVAL  '3 days') + TIME '10:30:00'),
+('b100-0000-0000-0000-000000000006','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL  '1 day')  + TIME '12:00:00'),
+
+-- ----------------------------------------------------------------
+-- s07 · Diego Torres | alto consumo (desayuno + almuerzo diario), solo historial
+-- ----------------------------------------------------------------
+('b100-0000-0000-0000-000000000007','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL '30 days') + TIME '07:30:00'),
+('b100-0000-0000-0000-000000000007','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '30 days') + TIME '12:15:00'),
+('b100-0000-0000-0000-000000000007','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL '28 days') + TIME '07:45:00'),
+('b100-0000-0000-0000-000000000007','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '26 days') + TIME '12:00:00'),
+('b100-0000-0000-0000-000000000007','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL '24 days') + TIME '07:55:00'),
+('b100-0000-0000-0000-000000000007','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '22 days') + TIME '12:20:00'),
+('b100-0000-0000-0000-000000000007','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '20 days') + TIME '07:40:00'),
+('b100-0000-0000-0000-000000000007','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '18 days') + TIME '12:30:00'),
+('b100-0000-0000-0000-000000000007','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL '16 days') + TIME '07:35:00'),
+('b100-0000-0000-0000-000000000007','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '14 days') + TIME '12:10:00'),
+('b100-0000-0000-0000-000000000007','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '12 days') + TIME '07:50:00'),
+('b100-0000-0000-0000-000000000007','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '10 days') + TIME '12:05:00'),
+('b100-0000-0000-0000-000000000007','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL  '8 days') + TIME '07:40:00'),
+('b100-0000-0000-0000-000000000007','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL  '6 days') + TIME '12:25:00'),
+('b100-0000-0000-0000-000000000007','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL  '4 days') + TIME '07:55:00'),
+('b100-0000-0000-0000-000000000007','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL  '2 days') + TIME '12:00:00'),
+('b100-0000-0000-0000-000000000007','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL  '1 day')  + TIME '07:35:00'),
+
+-- ----------------------------------------------------------------
+-- s08 · Valentina Flores | bajo consumo (balance crítico bajo), solo historial
+-- ----------------------------------------------------------------
+('b100-0000-0000-0000-000000000008','c100-0000-0000-0000-000000000008', 2500.00, (CURRENT_DATE - INTERVAL '27 days') + TIME '10:30:00'),
+('b100-0000-0000-0000-000000000008','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '23 days') + TIME '07:50:00'),
+('b100-0000-0000-0000-000000000008','c100-0000-0000-0000-000000000008', 2500.00, (CURRENT_DATE - INTERVAL '19 days') + TIME '10:45:00'),
+('b100-0000-0000-0000-000000000008','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '15 days') + TIME '07:40:00'),
+('b100-0000-0000-0000-000000000008','c100-0000-0000-0000-000000000008', 2500.00, (CURRENT_DATE - INTERVAL '11 days') + TIME '10:20:00'),
+('b100-0000-0000-0000-000000000008','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL  '7 days') + TIME '07:55:00'),
+('b100-0000-0000-0000-000000000008','c100-0000-0000-0000-000000000008', 2500.00, (CURRENT_DATE - INTERVAL  '3 days') + TIME '10:35:00'),
+('b100-0000-0000-0000-000000000008','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL  '1 day')  + TIME '07:45:00'),
+
+-- ----------------------------------------------------------------
+-- s09 · Sebastián Ramírez | consumo elevado constante, solo historial
+-- ----------------------------------------------------------------
+('b100-0000-0000-0000-000000000009','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL '30 days') + TIME '07:30:00'),
+('b100-0000-0000-0000-000000000009','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '30 days') + TIME '12:10:00'),
+('b100-0000-0000-0000-000000000009','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL '28 days') + TIME '07:40:00'),
+('b100-0000-0000-0000-000000000009','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '26 days') + TIME '12:20:00'),
+('b100-0000-0000-0000-000000000009','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '24 days') + TIME '07:50:00'),
+('b100-0000-0000-0000-000000000009','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '22 days') + TIME '12:00:00'),
+('b100-0000-0000-0000-000000000009','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL '20 days') + TIME '07:35:00'),
+('b100-0000-0000-0000-000000000009','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '18 days') + TIME '12:30:00'),
+('b100-0000-0000-0000-000000000009','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '16 days') + TIME '07:55:00'),
+('b100-0000-0000-0000-000000000009','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '14 days') + TIME '12:15:00'),
+('b100-0000-0000-0000-000000000009','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL '12 days') + TIME '07:40:00'),
+('b100-0000-0000-0000-000000000009','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '10 days') + TIME '12:05:00'),
+('b100-0000-0000-0000-000000000009','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL  '8 days') + TIME '07:45:00'),
+('b100-0000-0000-0000-000000000009','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL  '6 days') + TIME '12:25:00'),
+('b100-0000-0000-0000-000000000009','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL  '4 days') + TIME '07:30:00'),
+('b100-0000-0000-0000-000000000009','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL  '2 days') + TIME '12:10:00'),
+('b100-0000-0000-0000-000000000009','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL  '1 day')  + TIME '07:50:00'),
+
+-- ----------------------------------------------------------------
+-- s10 · Isabella Castro | variado, frecuencia media, solo historial
+-- ----------------------------------------------------------------
+('b100-0000-0000-0000-000000000010','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '29 days') + TIME '07:40:00'),
+('b100-0000-0000-0000-000000000010','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '27 days') + TIME '12:00:00'),
+('b100-0000-0000-0000-000000000010','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL '25 days') + TIME '07:50:00'),
+('b100-0000-0000-0000-000000000010','c100-0000-0000-0000-000000000008', 2500.00, (CURRENT_DATE - INTERVAL '23 days') + TIME '10:30:00'),
+('b100-0000-0000-0000-000000000010','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '21 days') + TIME '12:20:00'),
+('b100-0000-0000-0000-000000000010','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL '19 days') + TIME '07:35:00'),
+('b100-0000-0000-0000-000000000010','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '16 days') + TIME '12:10:00'),
+('b100-0000-0000-0000-000000000010','c100-0000-0000-0000-000000000004', 4000.00, (CURRENT_DATE - INTERVAL '13 days') + TIME '07:55:00'),
+('b100-0000-0000-0000-000000000010','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL '10 days') + TIME '12:05:00'),
+('b100-0000-0000-0000-000000000010','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL  '7 days') + TIME '07:40:00'),
+('b100-0000-0000-0000-000000000010','c100-0000-0000-0000-000000000008', 2500.00, (CURRENT_DATE - INTERVAL  '5 days') + TIME '10:25:00'),
+('b100-0000-0000-0000-000000000010','c100-0000-0000-0000-000000000007', 8000.00, (CURRENT_DATE - INTERVAL  '2 days') + TIME '12:15:00'),
+('b100-0000-0000-0000-000000000010','c100-0000-0000-0000-000000000006', 3500.00, (CURRENT_DATE - INTERVAL  '1 day')  + TIME '07:45:00');
+
+-- ================================================================
+-- [C1 + D] TRANSACCIONES DE HOY
+-- ================================================================
+-- s01 Juan:   desayuno + maní (⚠ ALERTA alérgeno mani)
+-- s02 María:  jugo + empanada (sin alérgeno → solo consulta de consumo)
+-- s03 Carlos: leche choc (⚠ ALERTA alérgeno leche) + almuerzo
+--
+-- s04/s05/s06: sin ningún INSERT hoy → disparan Cron de ausencia 12:00 PM
+-- ================================================================
+
+INSERT INTO transactions (student_id, product_id, amount, created_at) VALUES
+
+-- s01 · Juan García
+('b100-0000-0000-0000-000000000001','c100-0000-0000-0000-000000000004', 4000.00, CURRENT_DATE + TIME '07:35:00'),
+('b100-0000-0000-0000-000000000001','c100-0000-0000-0000-000000000001', 2500.00, CURRENT_DATE + TIME '10:30:00'),  -- ⚠ ALÉRGENO: mani
+
+-- s02 · María López
+('b100-0000-0000-0000-000000000002','c100-0000-0000-0000-000000000006', 3500.00, CURRENT_DATE + TIME '07:50:00'),
+('b100-0000-0000-0000-000000000002','c100-0000-0000-0000-000000000008', 2500.00, CURRENT_DATE + TIME '10:15:00'),
+
+-- s03 · Carlos Rodríguez
+('b100-0000-0000-0000-000000000003','c100-0000-0000-0000-000000000002', 3000.00, CURRENT_DATE + TIME '10:45:00'),  -- ⚠ ALÉRGENO: leche
+('b100-0000-0000-0000-000000000003','c100-0000-0000-0000-000000000007', 8000.00, CURRENT_DATE + TIME '12:05:00');
+
+-- s04, s05, s06 no tienen ningún registro hoy → Cron de ausencia los detecta.
+
+COMMIT;
+
+-- ================================================================
+-- QUERIES DE VERIFICACIÓN (ejecutar por separado para validar)
+-- ================================================================
+
+-- [A] Conteos generales
+-- SELECT COUNT(*) FROM students;            -- debe ser 10
+-- SELECT COUNT(*) FROM parent_phone_map;    -- debe ser 10
+-- SELECT COUNT(*) FROM cafeteria_admins;    -- debe ser 1
+
+-- [B] Promedio de gasto últimos 30 días por estudiante
+-- SELECT s.name,
+--        ROUND(SUM(t.amount) / 30.0, 2) AS avg_daily_spend
+-- FROM students s
+-- JOIN transactions t ON t.student_id = s.id
+-- WHERE t.created_at >= CURRENT_DATE - INTERVAL '30 days'
+--   AND t.created_at <  CURRENT_DATE
+-- GROUP BY s.name ORDER BY avg_daily_spend DESC;
+
+-- [C1] Qué comió Juan hoy
+-- SELECT p.name, t.amount, t.created_at
+-- FROM transactions t JOIN products p ON p.id = t.product_id
+-- WHERE t.student_id = 'b100-0000-0000-0000-000000000001'
+--   AND t.created_at >= CURRENT_DATE;
+
+-- [C2] Estudiantes sin consumo hoy (para Cron 12:00 PM)
+-- SELECT s.name, s.id
+-- FROM students s
+-- WHERE s.school_id = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
+--   AND NOT EXISTS (
+--       SELECT 1 FROM transactions t
+--       WHERE t.student_id = s.id
+--         AND t.created_at >= CURRENT_DATE
+--   );
+-- Resultado esperado: Ana Martínez, Pedro González, Lucía Hernández
+
+-- [D] Coincidencias alérgeno estudiante ↔ producto HOY
+-- SELECT s.name AS estudiante, sa.allergen_name, p.name AS producto, t.created_at
+-- FROM transactions t
+-- JOIN students s  ON s.id = t.student_id
+-- JOIN products  p ON p.id = t.product_id
+-- JOIN student_allergens sa ON sa.student_id = t.student_id
+-- JOIN product_allergens pa ON pa.product_id = t.product_id
+--                          AND pa.allergen_name = sa.allergen_name
+-- WHERE t.created_at >= CURRENT_DATE;
+-- Resultado esperado: Juan → mani (Maní tostado), Carlos → leche (Leche con chocolate)
+
+-- [E] Productos con stock crítico (Cron 7:00 AM)
+-- SELECT p.name, i.current_stock, i.minimum_stock
+-- FROM inventory i JOIN products p ON p.id = i.product_id
+-- WHERE i.school_id = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
+--   AND i.current_stock <= i.minimum_stock;
+-- Resultado esperado: Maní tostado (5/10), Pan integral (8/15), Arroz con pollo (3/5)

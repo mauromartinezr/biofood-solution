@@ -16,7 +16,7 @@ WAIT_POSTGRES = until docker exec biofood-postgres pg_isready -U hackuser -d hac
 .PHONY: all build build-web build-api dev-web dev-api clean tidy help
 .PHONY: deploy deploy-api deploy-down deploy-logs deploy-restart
 .PHONY: deploy-vps deploy-vps-full
-.PHONY: db-up db-down db-logs db-psql migrate migrate-docker
+.PHONY: db-up db-down db-logs db-psql db-seed migrate migrate-docker
 
 ## Full production build: web assets → embedded into binary → bin/
 all: build
@@ -59,6 +59,13 @@ db-logs: ## Logs de PostgreSQL
 
 db-psql: ## Shell psql en el contenedor
 	docker exec -it biofood-postgres psql -U hackuser -d hackathondb
+
+db-seed: db-up ## Carga datos de prueba BioAlert (postgres/seed.sql)
+	@echo "==> Esperando PostgreSQL..."
+	@$(WAIT_POSTGRES)
+	@echo "==> Ejecutando seed..."
+	docker exec -i biofood-postgres psql -U hackuser -d hackathondb < postgres/seed.sql
+	@echo "==> Seed completado."
 
 migrate: db-up ## Ejecuta migraciones (Go local → localhost:5436)
 	@echo "==> Esperando PostgreSQL..."
