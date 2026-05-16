@@ -54,8 +54,8 @@ func (h *Handler) Webhook(c echo.Context) error {
 		return c.JSON(http.StatusOK, echo.Map{"status": "ignored"})
 	}
 
-	from := stripJID(payload.Data.Key.RemoteJid)
-	if from == "" {
+	from := toE164(stripJID(payload.Data.Key.RemoteJid))
+	if from == "+" {
 		return response.Error(c, apperrors.ErrInvalidInput)
 	}
 
@@ -69,6 +69,14 @@ func stripJID(jid string) string {
 		return local
 	}
 	return jid
+}
+
+// toE164 ensures the phone number has the '+' prefix required by parent_phone_map.
+func toE164(phone string) string {
+	if strings.HasPrefix(phone, "+") {
+		return phone
+	}
+	return "+" + phone
 }
 
 type sendRequest struct {
