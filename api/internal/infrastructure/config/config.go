@@ -5,8 +5,11 @@ import (
 )
 
 type Config struct {
-	Port string
-	DSN  string
+	Port              string
+	DSN               string
+	EvolutionBaseURL  string
+	EvolutionInstance string
+	EvolutionAPIKey   string
 }
 
 func Load() Config {
@@ -19,7 +22,10 @@ func Load() Config {
 		dsn = "host=localhost user=hackuser password=h4ckPass@549sSijfl_sD dbname=hackathondb port=5436 sslmode=disable TimeZone=UTC"
 	}
 	return Config{
-		Port: port,
-		DSN:  dsn,
+		Port:              port,
+		DSN:               dsn,
+		EvolutionBaseURL:  os.Getenv("EVOLUTION_BASE_URL"),
+		EvolutionInstance: os.Getenv("EVOLUTION_INSTANCE"),
+		EvolutionAPIKey:   os.Getenv("EVOLUTION_API_KEY"),
 	}
 }
