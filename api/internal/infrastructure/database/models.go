@@ -75,3 +75,11 @@ type inventoryModel struct {
 }
 
 func (inventoryModel) TableName() string { return "inventory" }
+
+// phone_biofood_map maps a WhatsApp phone to a Biofood usuario_identificacion (no FK constraint).
+type phoneBiofoodMapModel struct {
+	PhoneE164             string `gorm:"primaryKey;column:phone_e164"`
+	UsuarioIdentificacion string `gorm:"column:usuario_identificacion;not null"`
+}
+
+func (phoneBiofoodMapModel) TableName() string { return "phone_biofood_map" }

@@ -21,21 +21,21 @@ type Server struct {
 	echo *echo.Echo
 }
 
-func NewServer(db *gorm.DB, staticFS fs.FS, cfg config.Config) *Server {
+func NewServer(localDB, hackathonDB *gorm.DB, staticFS fs.FS, cfg config.Config) *Server {
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORS())
 
 	// Products
-	repo := database.NewProductRepository(db)
+	repo := database.NewProductRepository(localDB)
 	svc := application.NewService(repo)
 	handler := producthttp.NewHandler(svc)
 
 	// WhatsApp / Evolution API
 	evolutionClient := whatsappinfra.NewEvolutionClient(cfg.EvolutionBaseURL, cfg.EvolutionInstance, cfg.EvolutionAPIKey)
 	evolutionSender := whatsappinfra.NewEvolutionSender(evolutionClient)
-	botRepo := database.NewWhatsAppBotRepository(db)
+	botRepo := database.NewWhatsAppBotRepository(localDB, hackathonDB)
 	whatsappSvc := whatsappapp.NewService(evolutionSender, botRepo)
 	whatsappHandler := whatsapphttp.NewHandler(whatsappSvc)
 

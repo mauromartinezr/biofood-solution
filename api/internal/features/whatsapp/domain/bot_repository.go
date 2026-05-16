@@ -1,17 +1,21 @@
 package domain
 
-type Student struct {
-	ID      string
-	Name    string
-	Balance float64
+type StudentInfo struct {
+	UsuarioID     string
+	Name          string
+	Colegio       string
+	Balance       float64
+	AvgDailySpend float64
 }
 
-type MenuItem struct {
-	Name  string
-	Price float64
+type RecentPurchase struct {
+	Date    string
+	Product string
+	Price   float64
+	Qty     int
 }
 
 type BotRepository interface {
-	FindStudentByPhone(phoneE164 string) (Student, error)
-	FindMenuItems() ([]MenuItem, error)
+	FindStudentByPhone(phoneE164 string) (StudentInfo, error)
+	FindRecentPurchases(usuarioID string) ([]RecentPurchase, error)
 }

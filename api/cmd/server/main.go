@@ -13,15 +13,20 @@ import (
 func main() {
 	cfg := config.Load()
 
-	db, err := database.Connect(cfg.DSN)
+	localDB, err := database.Connect(cfg.DSN)
 	if err != nil {
-		log.Fatalf("failed to connect database: %v", err)
+		log.Fatalf("failed to connect local database: %v", err)
 	}
-	if err := database.Migrate(db); err != nil {
+	if err := database.Migrate(localDB); err != nil {
 		log.Fatalf("failed to migrate database: %v", err)
 	}
 
-	server := infrahttp.NewServer(db, embedFS, cfg)
+	hackathonDB, err := database.Connect(cfg.HackathonDSN)
+	if err != nil {
+		log.Fatalf("failed to connect hackathon database: %v", err)
+	}
+
+	server := infrahttp.NewServer(localDB, hackathonDB, embedFS, cfg)
 	addr := ":" + cfg.Port
 	log.Printf("server listening on %s", addr)
 	if err := server.Start(addr); err != nil {

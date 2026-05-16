@@ -32,5 +32,6 @@ func Migrate(db *gorm.DB) error {
 		&parentPhoneMapModel{},
 		&cafeteriaAdminModel{},
 		&inventoryModel{},
+		&phoneBiofoodMapModel{},
 	)
 }
