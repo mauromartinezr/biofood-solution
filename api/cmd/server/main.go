@@ -17,6 +17,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to connect database: %v", err)
 	}
+	if err := database.Migrate(db); err != nil {
+		log.Fatalf("failed to migrate database: %v", err)
+	}
 
 	server := infrahttp.NewServer(db, embedFS)
 	addr := ":" + cfg.Port
