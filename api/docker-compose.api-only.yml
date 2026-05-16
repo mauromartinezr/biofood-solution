@@ -1,5 +1,5 @@
 # Solo API. PostgreSQL va en postgres/docker-compose.yml (make db-up).
-# En el VPS: make db-up && make migrate-docker && make deploy-api
+# La API ejecuta AutoMigrate al iniciar.
 
 services:
   biofood-backend:
@@ -21,17 +21,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    networks:
-      - biofood
-
-  migrate:
-    profiles: [tools]
-    build:
-      context: .
-      dockerfile: Dockerfile.api-only
-    env_file:
-      - .env.dev
-    command: ["./migrate"]
     networks:
       - biofood
 

@@ -30,8 +30,7 @@ COPY api/ ./
 COPY --from=web /web/dist ./cmd/server/dist
 
 ENV CGO_ENABLED=0
-RUN go build -tags prod -ldflags="-w -s" -o /out/main ./cmd/server && \
-    go build -ldflags="-w -s" -o /out/migrate ./cmd/migrate
+RUN go build -tags prod -ldflags="-w -s" -o /out/main ./cmd/server
 
 # --- Stage 3: runtime ---
 FROM alpine:latest
@@ -43,7 +42,6 @@ RUN adduser -D -s /bin/sh appuser
 WORKDIR /app
 
 COPY --from=builder /out/main .
-COPY --from=builder /out/migrate .
 COPY api/.env.dev .env.dev
 
 RUN chown -R appuser:appuser /app
