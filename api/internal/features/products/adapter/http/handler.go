@@ -2,7 +2,6 @@ package http
 
 import (
 	"net/http"
-	"strconv"
 
 	"biofood-solution/api/internal/features/products/application"
 	apperrors "biofood-solution/api/internal/shared/errors"
@@ -33,10 +32,9 @@ func (h *Handler) Create(c echo.Context) error {
 		return response.Error(c, err)
 	}
 	p, err := h.svc.Create(application.CreateInput{
-		Name:        body.Name,
-		Description: body.Description,
-		Price:       body.Price,
-		Stock:       body.Stock,
+		Name:     body.Name,
+		Category: body.Category,
+		Price:    body.Price,
 	})
 	if err != nil {
 		return response.Error(c, err)
@@ -45,9 +43,9 @@ func (h *Handler) Create(c echo.Context) error {
 }
 
 func (h *Handler) Get(c echo.Context) error {
-	id, err := parseID(c)
-	if err != nil {
-		return response.Error(c, err)
+	id := c.Param("id")
+	if id == "" {
+		return response.Error(c, apperrors.ErrInvalidInput)
 	}
 	p, err := h.svc.Get(id)
 	if err != nil {
@@ -57,19 +55,18 @@ func (h *Handler) Get(c echo.Context) error {
 }
 
 func (h *Handler) Update(c echo.Context) error {
-	id, err := parseID(c)
-	if err != nil {
-		return response.Error(c, err)
+	id := c.Param("id")
+	if id == "" {
+		return response.Error(c, apperrors.ErrInvalidInput)
 	}
 	var body updateRequest
 	if err := c.Bind(&body); err != nil {
 		return response.Error(c, err)
 	}
 	p, err := h.svc.Update(id, application.UpdateInput{
-		Name:        body.Name,
-		Description: body.Description,
-		Price:       body.Price,
-		Stock:       body.Stock,
+		Name:     body.Name,
+		Category: body.Category,
+		Price:    body.Price,
 	})
 	if err != nil {
 		return response.Error(c, err)
@@ -78,9 +75,9 @@ func (h *Handler) Update(c echo.Context) error {
 }
 
 func (h *Handler) Delete(c echo.Context) error {
-	id, err := parseID(c)
-	if err != nil {
-		return response.Error(c, err)
+	id := c.Param("id")
+	if id == "" {
+		return response.Error(c, apperrors.ErrInvalidInput)
 	}
 	if err := h.svc.Delete(id); err != nil {
 		return response.Error(c, err)
@@ -89,23 +86,13 @@ func (h *Handler) Delete(c echo.Context) error {
 }
 
 type createRequest struct {
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Price       float64 `json:"price"`
-	Stock       int     `json:"stock"`
+	Name     string  `json:"name"`
+	Category string  `json:"category"`
+	Price    float64 `json:"price"`
 }
 
 type updateRequest struct {
-	Name        *string  `json:"name"`
-	Description *string  `json:"description"`
-	Price       *float64 `json:"price"`
-	Stock       *int     `json:"stock"`
-}
-
-func parseID(c echo.Context) (uint, error) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil || id == 0 {
-		return 0, apperrors.ErrInvalidInput
-	}
-	return uint(id), nil
+	Name     *string  `json:"name"`
+	Category *string  `json:"category"`
+	Price    *float64 `json:"price"`
 }

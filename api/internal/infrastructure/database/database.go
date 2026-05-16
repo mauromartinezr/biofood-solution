@@ -23,5 +23,14 @@ func isPostgresDSN(dsn string) bool {
 }
 
 func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&productModel{})
+	return db.AutoMigrate(
+		&studentModel{},
+		&productModel{},
+		&transactionModel{},
+		&studentAllergenModel{},
+		&productAllergenModel{},
+		&parentPhoneMapModel{},
+		&cafeteriaAdminModel{},
+		&inventoryModel{},
+	)
 }

@@ -18,7 +18,7 @@ func (s *Service) List() ([]domain.Product, error) {
 	return s.repo.FindAll()
 }
 
-func (s *Service) Get(id uint) (domain.Product, error) {
+func (s *Service) Get(id string) (domain.Product, error) {
 	return s.repo.FindByID(id)
 }
 
@@ -27,10 +27,9 @@ func (s *Service) Create(input CreateInput) (domain.Product, error) {
 		return domain.Product{}, apperrors.ErrInvalidInput
 	}
 	p := domain.Product{
-		Name:        input.Name,
-		Description: input.Description,
-		Price:       input.Price,
-		Stock:       input.Stock,
+		Name:     input.Name,
+		Category: input.Category,
+		Price:    input.Price,
 	}
 	if err := s.repo.Create(&p); err != nil {
 		return domain.Product{}, err
@@ -38,7 +37,7 @@ func (s *Service) Create(input CreateInput) (domain.Product, error) {
 	return p, nil
 }
 
-func (s *Service) Update(id uint, input UpdateInput) (domain.Product, error) {
+func (s *Service) Update(id string, input UpdateInput) (domain.Product, error) {
 	p, err := s.repo.FindByID(id)
 	if err != nil {
 		return domain.Product{}, err
@@ -46,8 +45,8 @@ func (s *Service) Update(id uint, input UpdateInput) (domain.Product, error) {
 	if input.Name != nil {
 		p.Name = *input.Name
 	}
-	if input.Description != nil {
-		p.Description = *input.Description
+	if input.Category != nil {
+		p.Category = *input.Category
 	}
 	if input.Price != nil {
 		if *input.Price <= 0 {
@@ -55,29 +54,24 @@ func (s *Service) Update(id uint, input UpdateInput) (domain.Product, error) {
 		}
 		p.Price = *input.Price
 	}
-	if input.Stock != nil {
-		p.Stock = *input.Stock
-	}
 	if err := s.repo.Update(&p); err != nil {
 		return domain.Product{}, err
 	}
 	return p, nil
 }
 
-func (s *Service) Delete(id uint) error {
+func (s *Service) Delete(id string) error {
 	return s.repo.Delete(id)
 }
 
 type CreateInput struct {
-	Name        string
-	Description string
-	Price       float64
-	Stock       int
+	Name     string
+	Category string
+	Price    float64
 }
 
 type UpdateInput struct {
-	Name        *string
-	Description *string
-	Price       *float64
-	Stock       *int
+	Name     *string
+	Category *string
+	Price    *float64
 }

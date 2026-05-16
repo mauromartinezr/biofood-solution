@@ -21,7 +21,7 @@ func main() {
 		log.Fatalf("failed to migrate database: %v", err)
 	}
 
-	server := infrahttp.NewServer(db, embedFS)
+	server := infrahttp.NewServer(db, embedFS, cfg)
 	addr := ":" + cfg.Port
 	log.Printf("server listening on %s", addr)
 	if err := server.Start(addr); err != nil {
