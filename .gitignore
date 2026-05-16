@@ -1,0 +1,13 @@
+# Go
+bin/
+*.db
+
+# Node
+web/node_modules/
+web/dist/
+
+# Embedded dist (generado en build)
+api/cmd/server/dist/
+
+# OS
+.DS_Store
