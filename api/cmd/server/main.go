@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 
+	"github.com/joho/godotenv"
+
 	"biofood-solution/api/internal/infrastructure/config"
 	"biofood-solution/api/internal/infrastructure/database"
 	infrahttp "biofood-solution/api/internal/infrastructure/http"
@@ -11,6 +13,9 @@ import (
 //go:generate go run github.com/a-h/templ/cmd/templ@latest generate
 
 func main() {
+	// Load .env.local if present (dev); silently ignored in prod where env vars are injected directly.
+	_ = godotenv.Load(".env.local")
+
 	cfg := config.Load()
 
 	localDB, err := database.Connect(cfg.DSN)

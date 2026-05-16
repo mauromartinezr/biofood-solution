@@ -8,6 +8,7 @@ import (
 	"biofood-solution/api/internal/features/products/application"
 	whatsapphttp "biofood-solution/api/internal/features/whatsapp/adapter/http"
 	whatsappapp "biofood-solution/api/internal/features/whatsapp/application"
+	claudeinfra "biofood-solution/api/internal/infrastructure/claude"
 	"biofood-solution/api/internal/infrastructure/config"
 	"biofood-solution/api/internal/infrastructure/database"
 	whatsappinfra "biofood-solution/api/internal/infrastructure/whatsapp"
@@ -36,7 +37,8 @@ func NewServer(localDB, hackathonDB *gorm.DB, staticFS fs.FS, cfg config.Config)
 	evolutionClient := whatsappinfra.NewEvolutionClient(cfg.EvolutionBaseURL, cfg.EvolutionInstance, cfg.EvolutionAPIKey)
 	evolutionSender := whatsappinfra.NewEvolutionSender(evolutionClient)
 	botRepo := database.NewWhatsAppBotRepository(localDB, hackathonDB)
-	whatsappSvc := whatsappapp.NewService(evolutionSender, botRepo)
+	claudeClient := claudeinfra.NewClient(cfg.AnthropicAPIKey)
+	whatsappSvc := whatsappapp.NewService(evolutionSender, botRepo, claudeClient)
 	whatsappHandler := whatsapphttp.NewHandler(whatsappSvc)
 
 	e.GET("/health", func(c echo.Context) error {

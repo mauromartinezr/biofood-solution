@@ -15,7 +15,27 @@ type RecentPurchase struct {
 	Qty     int
 }
 
+type RechargeRecord struct {
+	Date   string
+	Amount float64
+}
+
+type ProductSummary struct {
+	Name  string
+	Times int
+	Total float64
+}
+
+type StudentContext struct {
+	StudentInfo
+	RechargeHistory []RechargeRecord
+	TopProducts     []ProductSummary
+	DaysRemaining   int
+}
+
 type BotRepository interface {
 	FindStudentByPhone(phoneE164 string) (StudentInfo, error)
 	FindRecentPurchases(usuarioID string) ([]RecentPurchase, error)
+	GetStudentContext(usuarioID string) (StudentContext, error)
+	GetStudentContextByPhone(phoneE164 string) (StudentContext, error)
 }

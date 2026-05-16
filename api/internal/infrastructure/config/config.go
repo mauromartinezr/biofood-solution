@@ -11,6 +11,7 @@ type Config struct {
 	EvolutionBaseURL  string
 	EvolutionInstance string
 	EvolutionAPIKey   string
+	AnthropicAPIKey   string
 }
 
 func Load() Config {
@@ -33,5 +34,6 @@ func Load() Config {
 		EvolutionBaseURL:  os.Getenv("EVOLUTION_BASE_URL"),
 		EvolutionInstance: os.Getenv("EVOLUTION_INSTANCE"),
 		EvolutionAPIKey:   os.Getenv("EVOLUTION_API_KEY"),
+		AnthropicAPIKey:   os.Getenv("ANTHROPIC_API_KEY"),
 	}
 }
