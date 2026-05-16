@@ -14,8 +14,9 @@ RUN go mod download
 
 COPY . .
 
+# Sin -tags prod: no requiere cmd/server/dist (frontend va aparte o con make deploy).
 ENV CGO_ENABLED=1
-RUN go build -tags prod -ldflags="-w -s" -o /out/main ./cmd/server
+RUN go build -ldflags="-w -s" -o /out/main ./cmd/server
 
 FROM alpine:latest
 
