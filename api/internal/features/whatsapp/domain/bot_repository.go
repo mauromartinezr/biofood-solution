@@ -1,17 +1,71 @@
 package domain
 
-type Student struct {
-	ID      string
-	Name    string
-	Balance float64
+type StudentInfo struct {
+	UsuarioID     string
+	Name          string
+	Colegio       string
+	Balance       float64
+	AvgDailySpend float64
 }
 
-type MenuItem struct {
+type RecentPurchase struct {
+	Date    string
+	Product string
+	Price   float64
+	Qty     int
+}
+
+type RechargeRecord struct {
+	Date   string
+	Amount float64
+}
+
+type ProductSummary struct {
 	Name  string
-	Price float64
+	Times int
+	Total float64
+}
+
+type SafeAlternative struct {
+	Name     string
+	Category string
+	Price    float64
+}
+
+type SmartOffer struct {
+	ProductName  string
+	CurrentStock int
+	MinimumStock int
+	DaysToExpiry int
+	DiscountText string
+}
+
+type RecentTransaction struct {
+	Date    string
+	Product string
+	Price   float64
+	Qty     int
+}
+
+type StudentContext struct {
+	StudentInfo
+	RechargeHistory    []RechargeRecord
+	TopProducts        []ProductSummary
+	DaysRemaining      int
+	Allergens          []string
+	SafeAlternatives   []SafeAlternative
+	RecentTransactions []RecentTransaction
+	SmartOffers        []SmartOffer
 }
 
 type BotRepository interface {
-	FindStudentByPhone(phoneE164 string) (Student, error)
-	FindMenuItems() ([]MenuItem, error)
+	FindStudentByPhone(phoneE164 string) (StudentInfo, error)
+	FindRecentPurchases(usuarioID string) ([]RecentPurchase, error)
+	GetStudentContext(usuarioID string) (StudentContext, error)
+	GetStudentContextByPhone(phoneE164 string) (StudentContext, error)
+	GetStudentAllergens(phoneE164 string) ([]string, error)
+	GetSafeAlternatives(allergens []string) ([]SafeAlternative, error)
+	GetLastTransactions(usuarioID string) ([]RecentTransaction, error)
+	GetSmartOffers() ([]SmartOffer, error)
+	GetCafeteriaAdminPhones() ([]string, error)
 }

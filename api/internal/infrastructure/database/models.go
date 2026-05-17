@@ -72,6 +72,15 @@ type inventoryModel struct {
 	SchoolID     string `gorm:"type:uuid;primaryKey;column:school_id"`
 	CurrentStock int    `gorm:"column:current_stock;not null;default:0"`
 	MinimumStock int    `gorm:"column:minimum_stock;not null;default:0"`
+	DaysToExpiry int    `gorm:"column:days_to_expiry;default:30"`
 }
 
 func (inventoryModel) TableName() string { return "inventory" }
+
+// phone_biofood_map maps a WhatsApp phone to a Biofood usuario_identificacion (no FK constraint).
+type phoneBiofoodMapModel struct {
+	PhoneE164             string `gorm:"primaryKey;column:phone_e164"`
+	UsuarioIdentificacion string `gorm:"column:usuario_identificacion;not null"`
+}
+
+func (phoneBiofoodMapModel) TableName() string { return "phone_biofood_map" }
