@@ -10,12 +10,15 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "^6.0.1",
+    "framer-motion": "^12.23.12",
+    "three": "^0.175.0",
     "typescript": "~6.0.2",
     "vite": "^8.0.12",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
   },
   "devDependencies": {
+    "@types/three": "^0.175.0",
     "@types/node": "^24.12.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3"

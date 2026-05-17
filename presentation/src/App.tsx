@@ -1,17 +1,39 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { IntroSlide } from './components/IntroSlide'
+import { ImpactQuestionSlide } from './components/ImpactQuestionSlide'
+import { PhoneConnectSlide } from './components/PhoneConnectSlide'
+import { PhonePlacementSlide } from './components/PhonePlacementSlide'
+import { ConnectStepsSlide } from './components/ConnectStepsSlide'
+import { BlackTransitionSlide } from './components/BlackTransitionSlide'
+import { CafeteriaDashboardSlide } from './components/CafeteriaDashboardSlide'
+import { FintechTrustSlide } from './components/FintechTrustSlide'
+import { ProductsRelationSlide } from './components/ProductsRelationSlide'
+import { NeuralNetworkSlide } from './components/NeuralNetworkSlide'
+import { PhoneFeaturesSlide } from './components/PhoneFeaturesSlide'
+import { HoySlide } from './components/HoySlide'
+import { JtbdSlide } from './components/JtbdSlide'
+import { LeanLoopSlide } from './components/LeanLoopSlide'
+import { BusinessCanvasSlide } from './components/BusinessCanvasSlide'
+import { ImpactFunnelSlide } from './components/ImpactFunnelSlide'
+import { TrustPromiseSlide } from './components/TrustPromiseSlide'
+import { NotifyStoryCaption } from './components/NotifyStoryCaption'
+import { StoryImageSlide } from './components/StoryImageSlide'
+import ricardo1 from './assets/ricardo1.png'
+import ricardo2 from './assets/ricardo2.png'
+import ricardo3 from './assets/ricardo3.png'
+import ricardo4 from './assets/ricardo4.png'
 
 type Slide = {
+  id: string
   label: string
   title: string
   body: ReactNode
-}
-
-type Metric = {
-  prefix?: string
-  value: number
-  suffix?: string
-  thousands?: boolean
+  /** Slide a pantalla completa sin layout estándar */
+  full?: boolean
+  /** Fondo oscuro en toda la ventana */
+  dark?: boolean
 }
 
 const funnelStages = [
@@ -29,50 +51,23 @@ const funnelStages = [
   },
   {
     stage: 'Resultado',
-    title: 'Revenue adicional',
+    title: 'Revenue transaccional',
     metric: { prefix: '+$', value: 348, suffix: 'M' },
-    detail: 'COP anuales proyectados con el escenario de menor friccion.',
+    detail: 'COP anuales proyectados por mayor ticket y recargas anticipadas.',
+  },
+  {
+    stage: 'Recurrente',
+    title: 'Plan Nutricion Familiar',
+    metric: { prefix: '$', value: 29900, suffix: '/mes' },
+    detail: 'Suscripcion: macros semanales, alertas y recomendaciones para mejorar nutricion en casa.',
   },
   {
     stage: 'Escala',
-    title: 'Siguiente meta',
+    title: 'Meta combinada',
     metric: { prefix: '+$', value: 1542, suffix: 'M', thousands: true },
-    detail: 'COP anuales si el ticket promedio llega a $6.000.',
+    detail: 'COP anuales: recargas + MRR familias + SaaS cafeterias en red de colegios.',
   },
 ]
-
-function formatMetric(value: number, metric: Metric) {
-  const formatted = metric.thousands
-    ? Math.round(value).toLocaleString('es-CO')
-    : Math.round(value).toString()
-  return `${metric.prefix ?? ''}${formatted}${metric.suffix ?? ''}`
-}
-
-function AnimatedMetric({ metric }: { metric: Metric }) {
-  const [value, setValue] = useState(0)
-
-  useEffect(() => {
-    let frame = 0
-    const totalFrames = 42
-
-    function animate() {
-      frame += 1
-      const progress = Math.min(frame / totalFrames, 1)
-      const eased = 1 - Math.pow(1 - progress, 3)
-      setValue(metric.value * eased)
-
-      if (progress < 1) {
-        requestAnimationFrame(animate)
-      }
-    }
-
-    setValue(0)
-    const animation = requestAnimationFrame(animate)
-    return () => cancelAnimationFrame(animation)
-  }, [metric])
-
-  return <>{formatMetric(value, metric)}</>
-}
 
 function App() {
   const [index, setIndex] = useState(0)
@@ -81,17 +76,128 @@ function App() {
   const slides: Slide[] = useMemo(
     () => [
       {
+        id: 'intro',
         label: '',
         title: '',
+        full: true,
+        dark: true,
+        body: null,
+      },
+      {
+        id: 'impact-question',
+        label: '',
+        title: '',
+        full: true,
+        dark: true,
+        body: <ImpactQuestionSlide />,
+      },
+      {
+        id: 'ricardo-1',
+        label: '',
+        title: '',
+        full: true,
+        dark: true,
         body: (
-          <div className="blackSlide" aria-label="Pantalla negra">
-            <button type="button" className="presentButton" onClick={startPresentation}>
-              Presentar
-            </button>
-          </div>
+          <StoryImageSlide
+            src={ricardo1}
+            alt="Ricardo en reunion de negocios, concentrado y exitoso"
+            step="01"
+            cinematic
+            brandSide="right"
+            caption={
+              <>
+                <strong>Ricardo.</strong> Lo tiene todo bajo control.
+              </>
+            }
+          />
         ),
       },
       {
+        id: 'ricardo-2',
+        label: '',
+        title: '',
+        full: true,
+        dark: true,
+        body: (
+          <StoryImageSlide
+            src={ricardo2}
+            alt="Estudiante en cafeteria con bandeja vacia y celular"
+            step="02"
+            caption={
+              <>
+                Mientras tanto, su hijo llega al comedor <span>sin saldo</span>.
+              </>
+            }
+          />
+        ),
+      },
+      {
+        id: 'ricardo-3',
+        label: '',
+        title: '',
+        full: true,
+        dark: true,
+        body: (
+          <StoryImageSlide
+            src={ricardo3}
+            alt="Mensaje de WhatsApp al papa: Hola papa, tengo un problema"
+            step="03"
+            cinematic
+            brandSide="right"
+            caption={<NotifyStoryCaption />}
+          />
+        ),
+      },
+      {
+        id: 'ricardo-4',
+        label: '',
+        title: '',
+        full: true,
+        dark: true,
+        body: (
+          <StoryImageSlide
+            src={ricardo4}
+            alt="Comedor vacio, solo un vaso de agua en la mesa"
+            step="04"
+            caption={
+              <motion.p
+                className="storyClose__hook storyClose__hook--solo"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.65, delay: 0.5 }}
+              >
+                No es hambre. Es <strong>desconexión</strong>.
+              </motion.p>
+            }
+          />
+        ),
+      },
+      {
+        id: 'phone-demo',
+        label: '',
+        title: '',
+        full: true,
+        dark: true,
+        body: <PhonePlacementSlide />,
+      },
+      {
+        id: 'phone-connect',
+        label: '',
+        title: '',
+        full: true,
+        dark: true,
+        body: <PhoneConnectSlide />,
+      },
+      {
+        id: 'trust-promise',
+        label: '',
+        title: '',
+        full: true,
+        dark: true,
+        body: <TrustPromiseSlide />,
+      },
+      {
+        id: 'pitch',
         label: 'Pitch',
         title: 'La cafeteria escolar que vende mejor porque aprende de cada compra.',
         body: (
@@ -101,130 +207,145 @@ function App() {
               padres recargan mas, familias entienden que comen sus hijos y cafeterias
               deciden que vender.
             </p>
-            <div className="journey" aria-label="Flujo de valor">
-              <span>Consumo</span>
-              <span>WhatsApp</span>
-              <span>Recarga</span>
-              <span>Revenue</span>
-            </div>
+            <motion.div
+              className="journey"
+              aria-label="Flujo de valor"
+              initial="hidden"
+              animate="show"
+              variants={{
+                hidden: {},
+                show: { transition: { staggerChildren: 0.12, delayChildren: 0.2 } },
+              }}
+            >
+              {['Consumo', 'WhatsApp', 'Recarga', 'Revenue'].map((step) => (
+                <motion.span
+                  key={step}
+                  variants={{
+                    hidden: { opacity: 0, y: 16 },
+                    show: { opacity: 1, y: 0 },
+                  }}
+                >
+                  {step}
+                </motion.span>
+              ))}
+            </motion.div>
           </>
         ),
       },
       {
+        id: 'hoy',
         label: 'Hoy',
         title: 'El dato se queda quieto.',
-        body: (
-          <div className="split">
-            <article>
-              <span>Padres</span>
-              <p>Ven saldo, pero no tienen una razon personalizada para recargar mas.</p>
-            </article>
-            <article>
-              <span>Familias</span>
-              <p>Pagan alimentacion, pero no ven calorias, grasas ni azucares semanales.</p>
-            </article>
-            <article>
-              <span>Cafeterias</span>
-              <p>Venden todos los dias, pero deciden portafolio por intuicion.</p>
-            </article>
-          </div>
-        ),
+        body: <HoySlide />,
       },
       {
+        id: 'jtbd',
+        label: 'Jobs to be done',
+        title: 'El trabajo que cada actor le monta a Biofood.',
+        body: <JtbdSlide />,
+      },
+      {
+        id: 'connect',
         label: 'Con Biofood Connect',
         title: 'El dato empuja una accion.',
-        body: (
-          <div className="steps">
-            <article>
-              <strong>1</strong>
-              <h2>Detectamos el patron</h2>
-              <p>El sistema entiende el consumo real del estudiante.</p>
-            </article>
-            <article>
-              <strong>2</strong>
-              <h2>WhatsApp recomienda</h2>
-              <p>El padre recibe una recarga sugerida con una razon concreta.</p>
-            </article>
-            <article>
-              <strong>3</strong>
-              <h2>La cafeteria decide</h2>
-              <p>Biofood Connect entrega recomendaciones de surtido, reemplazos y categorias.</p>
-            </article>
-          </div>
-        ),
+        body: <ConnectStepsSlide />,
       },
       {
+        id: 'lean-loop',
+        label: 'Lean startup',
+        title: 'Problema → MVP → metricas.',
+        body: <LeanLoopSlide />,
+      },
+      {
+        id: 'neural-network',
+        label: 'Motor de patrones',
+        title: 'La red entiende el consumo real del estudiante.',
+        body: <NeuralNetworkSlide />,
+      },
+      {
+        id: 'whatsapp-features',
+        label: 'WhatsApp recomienda',
+        title: 'Anticipa, informa y recompensa.',
+        body: <PhoneFeaturesSlide />,
+      },
+      {
+        id: 'cafeteria-dashboard',
+        label: 'La cafetería decide',
+        title: 'Inventario, tendencias y WhatsApp en un solo tablero.',
+        body: <CafeteriaDashboardSlide />,
+      },
+      {
+        id: 'business-canvas',
+        label: 'Modelo de negocio',
+        title: 'Un canvas, tres motores de ingreso.',
+        body: <BusinessCanvasSlide />,
+      },
+      {
+        id: 'impact',
         label: 'Impacto',
-        title: 'Impacto como funnel: dato, accion, revenue y escala.',
-        body: (
-          <div className="funnelCanvas">
-            <div className="funnelCopy">
-              {funnelStages.map((item) => (
-                <article key={item.stage}>
-                  <span>{item.stage}</span>
-                  <h2>{item.title}</h2>
-                  <p>{item.detail}</p>
-                </article>
-              ))}
-            </div>
-
-            <div className="funnelShape" aria-label="Funnel de impacto">
-              {funnelStages.map((item, itemIndex) => (
-                <div className={`funnelSlice slice${itemIndex + 1}`} key={item.stage}>
-                  <span>{String(itemIndex + 1).padStart(2, '0')}</span>
-                  <strong>
-                    <AnimatedMetric metric={item.metric} />
-                  </strong>
-                </div>
-              ))}
-            </div>
-          </div>
-        ),
+        title: 'Funnel economico: transaccional, recurrente y escala.',
+        body: <ImpactFunnelSlide stages={funnelStages} />,
       },
       {
-        label: 'Cierre',
-        title: 'No es otro reporte. Es un motor de decisiones para vender mas.',
-        body: (
-          <p className="lead">
-            Biofood Connect convierte los datos escolares en mayor recarga, mejor
-            informacion nutricional y cafeterias con inteligencia de negocio.
-          </p>
-        ),
+        id: 'black-pause',
+        label: '',
+        title: '',
+        full: true,
+        dark: true,
+        body: <BlackTransitionSlide />,
+      },
+      {
+        id: 'products-relation',
+        label: '',
+        title: '',
+        full: true,
+        dark: true,
+        body: <ProductsRelationSlide />,
+      },
+      {
+        id: 'fintech-trust',
+        label: '',
+        title: '',
+        full: true,
+        dark: true,
+        body: <FintechTrustSlide />,
       },
     ],
     [],
   )
 
   const current = slides[index]
+  const isDarkDeck = Boolean(current.dark)
 
-  function previous() {
+  const previous = useCallback(() => {
     setIndex((value) => Math.max(0, value - 1))
-  }
+  }, [])
 
-  function next() {
+  const next = useCallback(() => {
     setIndex((value) => Math.min(slides.length - 1, value + 1))
-  }
+  }, [slides.length])
 
-  async function startPresentation() {
+  const startPresentation = useCallback(async () => {
     if (!document.fullscreenElement) {
       await document.documentElement.requestFullscreen()
     }
     setIndex(1)
-  }
+  }, [])
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'ArrowLeft') {
         previous()
       }
-      if (event.key === 'ArrowRight') {
+      if (event.key === 'ArrowRight' || event.key === ' ') {
+        event.preventDefault()
         next()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [slides.length])
+  }, [next, previous])
 
   useEffect(() => {
     function handleFullscreenChange() {
@@ -236,23 +357,77 @@ function App() {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }, [])
 
+  useEffect(() => {
+    document.body.classList.toggle('deck--dark', isDarkDeck)
+    return () => document.body.classList.remove('deck--dark')
+  }, [isDarkDeck])
+
   return (
-    <main className="deck">
-      <section className="slide" aria-live="polite" key={index}>
-        {current.label || current.title ? (
-          <>
-            <p className="eyebrow">{current.label}</p>
-            <h1>{current.title}</h1>
-            <div className="content">{current.body}</div>
-          </>
-        ) : (
-          current.body
-        )}
-      </section>
+    <main className={`deck ${isDarkDeck ? 'deck--dark' : ''}`}>
+      <AnimatePresence mode="wait">
+        <motion.section
+          className={`slide ${current.full ? 'slide--full' : ''}`}
+          aria-live="polite"
+          key={current.id}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{
+            duration: current.id === 'black-transition' || current.id === 'black-pause' ? 0.2 : 0.35,
+          }}
+        >
+          {current.id === 'intro' ? (
+            <IntroSlide onStart={startPresentation} />
+          ) : current.full ? (
+            current.body
+          ) : (
+            <>
+              <motion.p
+                className="eyebrow"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35 }}
+              >
+                {current.label}
+              </motion.p>
+              <motion.h1
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, delay: 0.05 }}
+              >
+                {current.title}
+              </motion.h1>
+              <motion.div
+                className="content"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.12 }}
+              >
+                {current.body}
+              </motion.div>
+            </>
+          )}
+        </motion.section>
+      </AnimatePresence>
+
       {index > 0 && !isFullscreen ? (
         <button type="button" className="fullscreenButton" onClick={startPresentation}>
           Presentar
         </button>
+      ) : null}
+
+      {index > 0 ? (
+        <nav className="slideNav" aria-label="Navegacion de slides">
+          <button type="button" onClick={previous} disabled={index === 0}>
+            Anterior
+          </button>
+          <span>
+            {index + 1} / {slides.length}
+          </span>
+          <button type="button" onClick={next} disabled={index === slides.length - 1}>
+            Siguiente
+          </button>
+        </nav>
       ) : null}
     </main>
   )
