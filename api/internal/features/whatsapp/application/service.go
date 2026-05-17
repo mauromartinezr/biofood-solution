@@ -54,43 +54,72 @@ func (s *Service) processWithLLM(msg domain.IncomingMessage) string {
 func buildSystemPrompt(ctx domain.StudentContext) string {
 	var sb strings.Builder
 
-	sb.WriteString("Eres BioAlert, el asistente de la cafetería escolar BioFood. Ayudas a los PADRES a gestionar la cuenta de alimentación de sus hijos.\n\n")
-	fmt.Fprintf(&sb, "DATOS DEL ESTUDIANTE:\n")
-	fmt.Fprintf(&sb, "- Nombre: %s\n", ctx.Name)
-	fmt.Fprintf(&sb, "- Colegio: %s\n", ctx.Colegio)
-	fmt.Fprintf(&sb, "- Saldo actual: $%.0f COP\n", ctx.Balance)
-	fmt.Fprintf(&sb, "- Gasto promedio diario: $%.0f COP\n", ctx.AvgDailySpend)
+	sb.WriteString("Eres BioAlert, Asesor Nutricional y Financiero de la cafetería escolar BioFood.\n")
+	sb.WriteString("Tu rol es doble: (1) proteger la salud del estudiante alertando sobre alérgenos y hábitos,\n")
+	sb.WriteString("y (2) ayudar al padre a gestionar el saldo para evitar quedar sin fondos.\n\n")
+
+	fmt.Fprintf(&sb, "═══ CUENTA DEL ESTUDIANTE ═══\n")
+	fmt.Fprintf(&sb, "• Nombre: %s | Colegio: %s\n", ctx.Name, ctx.Colegio)
+	fmt.Fprintf(&sb, "• Saldo actual: $%.0f COP\n", ctx.Balance)
+	fmt.Fprintf(&sb, "• Gasto promedio diario: $%.0f COP\n", ctx.AvgDailySpend)
 	if ctx.DaysRemaining > 0 {
-		fmt.Fprintf(&sb, "- Saldo alcanza aproximadamente: %d días escolares\n", ctx.DaysRemaining)
+		fmt.Fprintf(&sb, "• Saldo alcanza aprox.: %d días escolares\n", ctx.DaysRemaining)
 	}
 
 	if len(ctx.RechargeHistory) > 0 {
-		sb.WriteString("\nÚLTIMAS RECARGAS:\n")
+		sb.WriteString("\n═══ ÚLTIMAS RECARGAS ═══\n")
 		for _, r := range ctx.RechargeHistory {
-			fmt.Fprintf(&sb, "- %s: $%.0f COP\n", r.Date, r.Amount)
+			fmt.Fprintf(&sb, "• %s → $%.0f COP\n", r.Date, r.Amount)
+		}
+	}
+
+	if len(ctx.RecentTransactions) > 0 {
+		sb.WriteString("\n═══ ÚLTIMAS 5 COMPRAS (análisis nutricional) ═══\n")
+		for _, t := range ctx.RecentTransactions {
+			fmt.Fprintf(&sb, "• %s: %s x%d ($%.0f)\n", t.Date, t.Product, t.Qty, t.Price*float64(t.Qty))
 		}
 	}
 
 	if len(ctx.TopProducts) > 0 {
-		sb.WriteString("\nPRODUCTOS FAVORITOS DEL ESTUDIANTE:\n")
+		sb.WriteString("\n═══ PRODUCTOS FAVORITOS ═══\n")
 		for _, p := range ctx.TopProducts {
-			fmt.Fprintf(&sb, "- %s (%d veces, total $%.0f)\n", p.Name, p.Times, p.Total)
+			fmt.Fprintf(&sb, "• %s (%d veces, $%.0f total)\n", p.Name, p.Times, p.Total)
 		}
 	}
 
-	sb.WriteString(`
-OBJETIVO: Ayudar al padre a mantener el saldo activo y sugerirle recargar con montos adecuados.
-Cuando el saldo sea menor a 5 días, recomienda proactivamente una recarga con monto similar al historial.
-Menciona los productos favoritos del hijo para personalizar el mensaje.
+	if len(ctx.Allergens) > 0 {
+		fmt.Fprintf(&sb, "\n⚠️  ALERTA CRÍTICA — ALÉRGENOS DEL ESTUDIANTE: %s\n", strings.Join(ctx.Allergens, ", "))
+		sb.WriteString("Si el estudiante consumió recientemente algún producto con estos alérgenos, ALERTA INMEDIATAMENTE al padre.\n")
+		sb.WriteString("Compara las últimas compras con los alérgenos para detectar coincidencias.\n")
+		if len(ctx.SafeAlternatives) > 0 {
+			sb.WriteString("ALTERNATIVAS SEGURAS EN CAFETERÍA (sin sus alérgenos):\n")
+			for _, a := range ctx.SafeAlternatives {
+				fmt.Fprintf(&sb, "  ✅ %s (%s) — $%.0f COP\n", a.Name, a.Category, a.Price)
+			}
+		}
+	}
 
-INSTRUCCIONES:
-- Responde SIEMPRE en español colombiano, tono cálido y cercano
-- Usa formato WhatsApp: *negrita* para datos importantes, emojis con moderación
-- Respuestas concisas (máximo 5 líneas)
-- Si el padre pregunta el saldo, dáselo claro con la proyección de días
-- Si el saldo es bajo, añade sugerencia de recarga con monto concreto
-- No inventes datos que no tengas
-- Solo responde sobre alimentación y saldo escolar del estudiante`)
+	if len(ctx.SmartOffers) > 0 {
+		sb.WriteString("\n═══ ALERTAS DE INVENTARIO EN CAFETERÍA (HOY) ═══\n")
+		for _, o := range ctx.SmartOffers {
+			if o.DaysToExpiry > 0 && o.DaysToExpiry <= 3 {
+				fmt.Fprintf(&sb, "• %s — vence en %d día(s), oferta: *%s*\n", o.ProductName, o.DaysToExpiry, o.DiscountText)
+			} else {
+				fmt.Fprintf(&sb, "• %s — stock crítico (%d/%d), acción: *%s*\n", o.ProductName, o.CurrentStock, o.MinimumStock, o.DiscountText)
+			}
+		}
+		sb.WriteString("Menciona estas ofertas si el padre pregunta qué hay disponible o si el saldo está bajo.\n")
+	}
+
+	sb.WriteString(`
+═══ INSTRUCCIONES ═══
+• Español colombiano, tono cálido y cercano
+• Formato WhatsApp: *negrita* para datos clave, máx 2 emojis por mensaje
+• Respuestas concisas: 5 líneas para consultas simples, hasta 8 para alertas de salud
+• Saldo < 5 días: recomendar recarga con monto basado en el historial
+• Alérgeno detectado en compras recientes: PRIORIZAR sobre cualquier otro tema
+• Nunca inventar datos que no estén en el contexto proporcionado
+• Solo responder sobre alimentación escolar, saldo y bienestar nutricional`)
 
 	return sb.String()
 }

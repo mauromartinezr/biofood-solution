@@ -26,11 +26,36 @@ type ProductSummary struct {
 	Total float64
 }
 
+type SafeAlternative struct {
+	Name     string
+	Category string
+	Price    float64
+}
+
+type SmartOffer struct {
+	ProductName  string
+	CurrentStock int
+	MinimumStock int
+	DaysToExpiry int
+	DiscountText string
+}
+
+type RecentTransaction struct {
+	Date    string
+	Product string
+	Price   float64
+	Qty     int
+}
+
 type StudentContext struct {
 	StudentInfo
-	RechargeHistory []RechargeRecord
-	TopProducts     []ProductSummary
-	DaysRemaining   int
+	RechargeHistory    []RechargeRecord
+	TopProducts        []ProductSummary
+	DaysRemaining      int
+	Allergens          []string
+	SafeAlternatives   []SafeAlternative
+	RecentTransactions []RecentTransaction
+	SmartOffers        []SmartOffer
 }
 
 type BotRepository interface {
@@ -38,4 +63,9 @@ type BotRepository interface {
 	FindRecentPurchases(usuarioID string) ([]RecentPurchase, error)
 	GetStudentContext(usuarioID string) (StudentContext, error)
 	GetStudentContextByPhone(phoneE164 string) (StudentContext, error)
+	GetStudentAllergens(phoneE164 string) ([]string, error)
+	GetSafeAlternatives(allergens []string) ([]SafeAlternative, error)
+	GetLastTransactions(usuarioID string) ([]RecentTransaction, error)
+	GetSmartOffers() ([]SmartOffer, error)
+	GetCafeteriaAdminPhones() ([]string, error)
 }

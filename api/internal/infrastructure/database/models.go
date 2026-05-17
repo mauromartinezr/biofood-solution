@@ -72,6 +72,7 @@ type inventoryModel struct {
 	SchoolID     string `gorm:"type:uuid;primaryKey;column:school_id"`
 	CurrentStock int    `gorm:"column:current_stock;not null;default:0"`
 	MinimumStock int    `gorm:"column:minimum_stock;not null;default:0"`
+	DaysToExpiry int    `gorm:"column:days_to_expiry;default:30"`
 }
 
 func (inventoryModel) TableName() string { return "inventory" }
