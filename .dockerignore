@@ -1,0 +1,8 @@
+bin/
+web/node_modules/
+web/dist/
+api/cmd/server/dist/
+api/bin/
+.git/
+*.db
+.DS_Store

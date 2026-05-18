@@ -1,0 +1,7 @@
+bin/
+cmd/server/dist/
+*.db
+.env.prod
+.git/
+.DS_Store
+.context-course/

@@ -1,0 +1,246 @@
+{
+  "info": {
+    "_postman_id": "biofood-analytics-api-2026",
+    "name": "BioFood API — Analítica y Estudiantes",
+    "description": "Colección generada desde `endpoints.md`.\n\n**Auth:** `X-API-Key: {{dashboard_api_key}}` (= `DASHBOARD_API_KEY` en `api/.env.dev`). Vacío si el servidor no exige clave.\n\n**Variables:** `baseUrl`, `dashboard_api_key`, `studentId`, `page`, `limit`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      { "key": "key", "value": "X-API-Key", "type": "string" },
+      { "key": "value", "value": "{{dashboard_api_key}}", "type": "string" },
+      { "key": "in", "value": "header", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3001" },
+    { "key": "dashboard_api_key", "value": "" },
+    { "key": "studentId", "value": "48291" },
+    { "key": "page", "value": "1" },
+    { "key": "limit", "value": "10" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Estado del servidor. Sin prefijo `/api` ni `X-API-Key`."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Vista 1 — Dashboard",
+      "item": [
+        {
+          "name": "01 — Top 4 productos más vendidos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/top-sold",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "top-sold"]
+            },
+            "description": "GET /api/products/top-sold — Top productos por volumen e ingresos (últimos 30 días)."
+          },
+          "response": []
+        },
+        {
+          "name": "02 — Desempeño por colegio",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/schools/performance",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools", "performance"]
+            },
+            "description": "GET /api/schools/performance — Ingresos, transacciones y ticket promedio por colegio."
+          },
+          "response": []
+        },
+        {
+          "name": "03 — Métricas globales",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/metrics/global",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "metrics", "global"]
+            },
+            "description": "GET /api/metrics/global — Ingresos totales, transacciones, ticket y recargas."
+          },
+          "response": []
+        },
+        {
+          "name": "04 — Patrones de recarga",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/recharge/patterns",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "recharge", "patterns"]
+            },
+            "description": "GET /api/recharge/patterns — Distribución de transacciones por rango de días."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Vista 2 — Directorio",
+      "item": [
+        {
+          "name": "05 — Resumen global estudiantes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/students/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "summary"]
+            },
+            "description": "GET /api/students/summary — Total estudiantes, gasto promedio y saldos bajos."
+          },
+          "response": []
+        },
+        {
+          "name": "06 — Consumo por colegio (Top 3)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/schools/consumption",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools", "consumption"]
+            },
+            "description": "GET /api/schools/consumption — Estudiantes activos y % por colegio."
+          },
+          "response": []
+        },
+        {
+          "name": "07 — Tendencia ingresos (6 meses)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/recharge/trend",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "recharge", "trend"]
+            },
+            "description": "GET /api/recharge/trend — Monto total y transacciones por mes."
+          },
+          "response": []
+        },
+        {
+          "name": "08 — Directorio estudiantes (paginado)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/students/directory?page={{page}}&limit={{limit}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "directory"],
+              "query": [
+                { "key": "page", "value": "{{page}}", "description": "Página (base 1), default 1" },
+                { "key": "limit", "value": "{{limit}}", "description": "Registros por página, máx. 100" }
+              ]
+            },
+            "description": "GET /api/students/directory — Listado paginado."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Vista 3 — Perfil estudiante",
+      "item": [
+        {
+          "name": "09 — Perfil del estudiante",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{studentId}}/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "{{studentId}}", "profile"]
+            },
+            "description": "GET /api/students/:id/profile — `id` = `usuario_identificacion`. 404 si no existe."
+          },
+          "response": []
+        },
+        {
+          "name": "10 — Historial transacciones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{studentId}}/transactions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "{{studentId}}", "transactions"]
+            },
+            "description": "GET /api/students/:id/transactions — Últimas 20 transacciones (fecha desc)."
+          },
+          "response": []
+        },
+        {
+          "name": "11 — Top 3 productos del estudiante",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{studentId}}/top-products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "{{studentId}}", "top-products"]
+            },
+            "description": "GET /api/students/:id/top-products — Solo compras con cantidad > 0."
+          },
+          "response": []
+        },
+        {
+          "name": "12 — Consumo semanal (nutrición)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{studentId}}/nutrition",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "{{studentId}}", "nutrition"]
+            },
+            "description": "GET /api/students/:id/nutrition — Unidades por producto (últimos 7 días)."
+          },
+          "response": []
+        },
+        {
+          "name": "13 — Análisis transaccional diario",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{studentId}}/analysis",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "{{studentId}}", "analysis"]
+            },
+            "description": "GET /api/students/:id/analysis — Gasto diario últimos 30 días."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+services:
+  biofood-postgres:
+    image: postgres:15-alpine
+    container_name: biofood-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hackathondb
+      POSTGRES_USER: hackuser
+      POSTGRES_PASSWORD: h4ckPass@549sSijfl_sD
+    ports:
+      - "5436:5432"
+    volumes:
+      - biofood_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hackuser -d hackathondb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - biofood
+
+networks:
+  biofood:
+    name: biofood-net
+
+volumes:
+  biofood_postgres_data:

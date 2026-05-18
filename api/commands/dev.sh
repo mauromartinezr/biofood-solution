@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+API_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$API_ROOT"
+
+export PORT="${PORT:-8080}"
+for env_file in .env .env.dev .env.local; do
+  if [[ -f "$env_file" ]]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "$env_file"
+    set +a
+  fi
+done
+export DATABASE_DSN="${DATABASE_DSN:-host=localhost user=hackuser password=h4ckPass@549sSijfl_sD dbname=hackathondb port=5436 sslmode=disable TimeZone=UTC}"
+
+echo "==> API dev (PORT=$PORT, DATABASE_DSN=$DATABASE_DSN)"
+go run ./cmd/server

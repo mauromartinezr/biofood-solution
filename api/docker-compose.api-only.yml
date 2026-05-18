@@ -1,0 +1,30 @@
+# Solo API. PostgreSQL va en postgres/docker-compose.yml (make db-up).
+# La API ejecuta AutoMigrate al iniciar.
+
+services:
+  biofood-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.api-only
+    image: biofood-backend:latest
+    container_name: biofood-backend
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env.dev
+    environment:
+      - PORT=3001
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - biofood
+
+networks:
+  biofood:
+    external: true
+    name: biofood-net
